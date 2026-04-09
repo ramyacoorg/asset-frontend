@@ -124,7 +124,7 @@ export default function DashboardPage() {
 
   if (!role) return null;
 
-  const DonutChart = ({ available, assigned, repair }: { available: number, assigned: number, repair: number }) => {
+  const DonutChart = ({ available, assigned, repair }: { available: number; assigned: number; repair: number }) => {
     const total = available + assigned + repair || 1;
     const circumference = 2 * Math.PI * 40;
     const availDash = (available / total) * circumference;
@@ -155,23 +155,27 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen flex"
+    <div
+      className="min-h-screen flex"
       style={{
         background: isAdmin
           ? "linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)"
           : "linear-gradient(135deg, #e0e7ff 0%, #f0f9ff 40%, #fdf4ff 100%)",
-      }}>
-
+      }}
+    >
       {/* SIDEBAR */}
-      <div className={`${sidebarOpen ? "w-64" : "w-16"} flex flex-col transition-all duration-500`}
+      <div
+        className={`${sidebarOpen ? "w-64" : "w-16"} flex flex-col transition-all duration-500`}
         style={{
           background: isAdmin ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.45)",
           backdropFilter: "blur(24px)",
           borderRight: isAdmin ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(255,255,255,0.6)",
-        }}>
-
-        <div className="p-4 flex items-center justify-between"
-          style={{ borderBottom: isAdmin ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(255,255,255,0.5)" }}>
+        }}
+      >
+        <div
+          className="p-4 flex items-center justify-between"
+          style={{ borderBottom: isAdmin ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(255,255,255,0.5)" }}
+        >
           {sidebarOpen && (
             <div className="flex items-center gap-2">
               <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-xl shadow-lg">
@@ -180,16 +184,20 @@ export default function DashboardPage() {
               <span className={`font-bold text-sm ${isAdmin ? "text-white" : "text-gray-800"}`}>OptiAsset</span>
             </div>
           )}
-          <button onClick={() => setSidebarOpen(!sidebarOpen)}
-            className={`${isAdmin ? "text-gray-400 hover:text-white" : "text-gray-400 hover:text-gray-700"}`}>
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className={`${isAdmin ? "text-gray-400 hover:text-white" : "text-gray-400 hover:text-gray-700"}`}
+          >
             {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </button>
         </div>
 
         {/* Profile */}
         {sidebarOpen && (
-          <div className="px-4 py-4"
-            style={{ borderBottom: isAdmin ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(255,255,255,0.4)" }}>
+          <div
+            className="px-4 py-4"
+            style={{ borderBottom: isAdmin ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(255,255,255,0.4)" }}
+          >
             <div className="flex items-center gap-3">
               <div className="relative group">
                 <div className="w-10 h-10 rounded-xl overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
@@ -199,8 +207,10 @@ export default function DashboardPage() {
                     <span className="text-white font-bold text-sm">{profile?.full_name?.[0] ?? "U"}</span>
                   )}
                 </div>
-                <button onClick={() => fileInputRef.current?.click()}
-                  className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
                   <Camera className="w-3 h-3 text-white" />
                 </button>
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
@@ -209,10 +219,12 @@ export default function DashboardPage() {
                 <p className={`text-sm font-semibold truncate ${isAdmin ? "text-white" : "text-gray-800"}`}>
                   {profile?.full_name ?? "Loading..."}
                 </p>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  isAdmin ? "bg-blue-500/20 text-blue-300" : "bg-green-500/20 text-green-700"
-                }`}>
-                  {isAdmin ? "Admin" : " Employee"}
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    isAdmin ? "bg-blue-500/20 text-blue-300" : "bg-green-500/20 text-green-700"
+                  }`}
+                >
+                  {isAdmin ? "👑 Admin" : "👤 Employee"}
                 </span>
               </div>
             </div>
@@ -221,25 +233,33 @@ export default function DashboardPage() {
 
         <nav className="flex-1 p-3 space-y-1">
           {links.map((link) => (
-            <button key={link.label} onClick={() => router.push(link.href)}
+            <button
+              key={link.label}
+              onClick={() => router.push(link.href)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm ${
                 link.active
                   ? isAdmin
                     ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border border-blue-500/20"
                     : "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-700 border border-blue-200/50"
                   : isAdmin
-                    ? "text-gray-400 hover:text-white hover:bg-white/10"
-                    : "text-gray-500 hover:text-gray-800 hover:bg-white/50"
-              }`}>
+                  ? "text-gray-400 hover:text-white hover:bg-white/10"
+                  : "text-gray-500 hover:text-gray-800 hover:bg-white/50"
+              }`}
+            >
               <link.icon className="w-4 h-4 shrink-0" />
               {sidebarOpen && <span>{link.label}</span>}
             </button>
           ))}
         </nav>
 
-        <div className="p-3" style={{ borderTop: isAdmin ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(255,255,255,0.5)" }}>
-          <button onClick={logout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 transition-all text-sm">
+        <div
+          className="p-3"
+          style={{ borderTop: isAdmin ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(255,255,255,0.5)" }}
+        >
+          <button
+            onClick={logout}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 transition-all text-sm"
+          >
             <LogOut className="w-4 h-4 shrink-0" />
             {sidebarOpen && <span>Logout</span>}
           </button>
@@ -250,7 +270,7 @@ export default function DashboardPage() {
       <div className="flex-1 p-8 overflow-auto">
         <div className="mb-8">
           <h1 className={`text-3xl font-bold ${isAdmin ? "text-white" : "text-gray-800"}`}>
-            {isAdmin ? "Admin Dashboard " : "My Dashboard "}
+            {isAdmin ? "Admin Dashboard 👑" : "My Dashboard 👤"}
           </h1>
           <p className={`text-sm mt-1 ${isAdmin ? "text-gray-400" : "text-gray-500"}`}>
             Welcome back, {profile?.full_name ?? ""}!
@@ -264,6 +284,7 @@ export default function DashboardPage() {
           </div>
         ) : isAdmin && adminStats ? (
           <>
+            {/* Stat Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               {[
                 { label: "Total Assets", value: adminStats.total_assets, icon: Package, color: "from-blue-400 to-blue-600", click: "/inventory" },
@@ -271,9 +292,12 @@ export default function DashboardPage() {
                 { label: "Open Issues", value: adminStats.open_issues, icon: AlertTriangle, color: "from-orange-400 to-red-400", click: "/issues" },
                 { label: "Resolved", value: adminStats.resolved_issues, icon: CheckCircle, color: "from-green-400 to-emerald-500", click: "/issues" },
               ].map((stat) => (
-                <button key={stat.label} onClick={() => router.push(stat.click)}
+                <button
+                  key={stat.label}
+                  onClick={() => router.push(stat.click)}
                   className="rounded-2xl p-5 text-left transition-all hover:scale-[1.02] hover:shadow-xl"
-                  style={{ background: "rgba(255,255,255,0.05)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  style={{ background: "rgba(255,255,255,0.05)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.1)" }}
+                >
                   <div className={`bg-gradient-to-br ${stat.color} p-3 rounded-xl w-fit mb-3 shadow-lg`}>
                     <stat.icon className="w-5 h-5 text-white" />
                   </div>
@@ -284,17 +308,22 @@ export default function DashboardPage() {
               ))}
             </div>
 
+            {/* Charts */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div className="rounded-2xl p-6"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+              <div
+                className="rounded-2xl p-6"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+              >
                 <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
                   <BarChart2 className="w-4 h-4 text-blue-400" /> Asset Status
                 </h3>
                 <DonutChart available={adminStats.available} assigned={adminStats.assigned} repair={adminStats.under_repair} />
               </div>
 
-              <div className="rounded-2xl p-6"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+              <div
+                className="rounded-2xl p-6"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+              >
                 <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-purple-400" /> Asset Breakdown
                 </h3>
@@ -311,8 +340,10 @@ export default function DashboardPage() {
                         <span>{bar.value}</span>
                       </div>
                       <div className="w-full bg-white/10 rounded-full h-2">
-                        <div className={`${bar.color} h-2 rounded-full`}
-                          style={{ width: `${bar.total ? (bar.value / bar.total) * 100 : 0}%` }} />
+                        <div
+                          className={`${bar.color} h-2 rounded-full`}
+                          style={{ width: `${bar.total ? (bar.value / bar.total) * 100 : 0}%` }}
+                        />
                       </div>
                     </div>
                   ))}
@@ -320,8 +351,11 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="rounded-2xl p-6"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+            {/* Recent Issues */}
+            <div
+              className="rounded-2xl p-6"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+            >
               <div className="flex items-center justify-between mb-5">
                 <h3 className="text-white font-semibold flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-orange-400" /> Recent Issues
@@ -335,8 +369,11 @@ export default function DashboardPage() {
               ) : (
                 <div className="space-y-3">
                   {adminStats.recent_issues.map((issue: any) => (
-                    <div key={issue.id} className="flex items-center justify-between p-3 rounded-xl"
-                      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div
+                      key={issue.id}
+                      className="flex items-center justify-between p-3 rounded-xl"
+                      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+                    >
                       <div className="flex items-center gap-3">
                         {issue.photo_url ? (
                           <img src={issue.photo_url} alt="Issue" className="w-10 h-10 object-cover rounded-lg" />
@@ -347,12 +384,20 @@ export default function DashboardPage() {
                         )}
                         <div>
                           <p className="text-white text-sm font-medium">{issue.issue_description}</p>
-                          <p className="text-gray-400 text-xs">Asset #{issue.asset_id} • {new Date(issue.reported_at).toLocaleDateString()}</p>
+                          <p className="text-gray-400 text-xs">
+                            Asset #{issue.asset_id} • {new Date(issue.reported_at).toLocaleDateString()}
+                          </p>
                         </div>
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
-                        issue.issue_status === "open" ? "bg-yellow-500/20 text-yellow-400" : "bg-green-500/20 text-green-400"
-                      }`}>{issue.issue_status}</span>
+                      <span
+                        className={`text-xs px-2 py-1 rounded-full font-semibold ${
+                          issue.issue_status === "open"
+                            ? "bg-yellow-500/20 text-yellow-400"
+                            : "bg-green-500/20 text-green-400"
+                        }`}
+                      >
+                        {issue.issue_status}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -367,14 +412,17 @@ export default function DashboardPage() {
                 { label: "Open Tickets", value: employeeStats.open_tickets, icon: Clock, color: "from-orange-400 to-red-400", click: "/my-tickets", sub: "Needs attention" },
                 { label: "Total Tickets", value: employeeStats.total_tickets, icon: FileText, color: "from-purple-400 to-purple-600", click: "/my-tickets", sub: "All time" },
               ].map((stat) => (
-                <button key={stat.label} onClick={() => router.push(stat.click)}
+                <button
+                  key={stat.label}
+                  onClick={() => router.push(stat.click)}
                   className="rounded-2xl p-6 text-left transition-all hover:scale-[1.02] hover:shadow-xl"
                   style={{
                     background: "rgba(255,255,255,0.55)",
                     backdropFilter: "blur(20px)",
                     border: "1px solid rgba(255,255,255,0.7)",
                     boxShadow: "0 8px 32px rgba(0,0,0,0.06)",
-                  }}>
+                  }}
+                >
                   <div className={`bg-gradient-to-br ${stat.color} p-3 rounded-xl w-fit mb-3 shadow-lg`}>
                     <stat.icon className="w-5 h-5 text-white" />
                   </div>
@@ -385,24 +433,39 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            <div className="rounded-2xl p-6"
+            <div
+              className="rounded-2xl p-6"
               style={{
                 background: "rgba(255,255,255,0.55)",
                 backdropFilter: "blur(20px)",
                 border: "1px solid rgba(255,255,255,0.7)",
-              }}>
+              }}
+            >
               <h3 className="text-gray-800 font-semibold mb-4">Quick Actions ⚡</h3>
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => router.push("/my-gear")}
+                <button
+                  onClick={() => router.push("/my-gear")}
                   className="p-4 rounded-xl text-left hover:scale-[1.02] transition-all"
-                  style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}>
+                  style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}
+                >
                   <Monitor className="w-5 h-5 text-blue-500 mb-2" />
                   <p className="text-gray-700 font-medium text-sm">View My Gear</p>
-                 </div>
+                  <p className="text-gray-400 text-xs mt-1">See assigned devices</p>
+                </button>
+                <button
+                  onClick={() => router.push("/my-tickets")}
+                  className="p-4 rounded-xl text-left hover:scale-[1.02] transition-all"
+                  style={{ background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.2)" }}
+                >
+                  <FileText className="w-5 h-5 text-purple-500 mb-2" />
+                  <p className="text-gray-700 font-medium text-sm">My Tickets</p>
+                  <p className="text-gray-400 text-xs mt-1">Track your issues</p>
+                </button>
+              </div>
             </div>
           </div>
         ) : null}
       </div>
     </div>
   );
-        }
+}
