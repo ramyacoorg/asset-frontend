@@ -5,7 +5,7 @@ import { getRole, logout, getToken } from "@/lib/auth";
 import {
   LayoutDashboard, Package, Users, FileText,
   GitBranch, LogOut, Menu, X, Monitor,
-  TrendingUp, AlertTriangle, CheckCircle, Clock, Camera, Activity
+  TrendingUp, AlertTriangle, CheckCircle, Clock, Camera, BarChart2
 } from "lucide-react";
 
 interface AdminStats {
@@ -127,9 +127,9 @@ export default function DashboardPage() {
   const DonutChart = ({ available, assigned, repair }: { available: number, assigned: number, repair: number }) => {
     const total = available + assigned + repair || 1;
     const circumference = 2 * Math.PI * 40;
-    const availDash = ((available / total) * circumference);
-    const assignDash = ((assigned / total) * circumference);
-    const repairDash = ((repair / total) * circumference);
+    const availDash = (available / total) * circumference;
+    const assignDash = (assigned / total) * circumference;
+    const repairDash = (repair / total) * circumference;
     return (
       <div className="flex items-center gap-6">
         <svg width="100" height="100" viewBox="0 0 100 100">
@@ -212,7 +212,7 @@ export default function DashboardPage() {
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                   isAdmin ? "bg-blue-500/20 text-blue-300" : "bg-green-500/20 text-green-700"
                 }`}>
-                  {isAdmin ? "Admin" : "Employee"}
+                  {isAdmin ? "Admin" : " Employee"}
                 </span>
               </div>
             </div>
@@ -264,7 +264,6 @@ export default function DashboardPage() {
           </div>
         ) : isAdmin && adminStats ? (
           <>
-            {/* Stat Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               {[
                 { label: "Total Assets", value: adminStats.total_assets, icon: Package, color: "from-blue-400 to-blue-600", click: "/inventory" },
@@ -285,12 +284,11 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {/* Charts */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div className="rounded-2xl p-6"
                 style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
                 <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-blue-400" /> Asset Status
+                  <BarChart2 className="w-4 h-4 text-blue-400" /> Asset Status
                 </h3>
                 <DonutChart available={adminStats.available} assigned={adminStats.assigned} repair={adminStats.under_repair} />
               </div>
@@ -322,7 +320,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Recent Issues */}
             <div className="rounded-2xl p-6"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
               <div className="flex items-center justify-between mb-5">
@@ -401,20 +398,4 @@ export default function DashboardPage() {
                   style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}>
                   <Monitor className="w-5 h-5 text-blue-500 mb-2" />
                   <p className="text-gray-700 font-medium text-sm">View My Gear</p>
-                  <p className="text-gray-400 text-xs mt-1">See assigned devices</p>
-                </button>
-                <button onClick={() => router.push("/my-tickets")}
-                  className="p-4 rounded-xl text-left hover:scale-[1.02] transition-all"
-                  style={{ background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.2)" }}>
-                  <FileText className="w-5 h-5 text-purple-500 mb-2" />
-                  <p className="text-gray-700 font-medium text-sm">My Tickets</p>
-                  <p className="text-gray-400 text-xs mt-1">Track your issues</p>
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
+                 
