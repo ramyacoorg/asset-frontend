@@ -157,8 +157,8 @@ export default function LoginPage() {
 
           <div className="mt-6 p-4 bg-slate-900 rounded-xl border border-slate-800">
             <p className="text-slate-500 text-xs font-medium mb-2">🔑 Test Credentials</p>
-            <p className="text-slate-400 text-xs"><span className="text-blue-400">Admin:</span> ramya@admin.com / secret</p>
-            <p className="text-slate-400 text-xs mt-1"><span className="text-green-400">Employee:</span> ben@employee.com / secret</p>
+            <p className="text-slate-400 text-xs"><span className="text-blue-400">Admin:</span> ramya@2admin.com / secret</p>
+            <p className="text-slate-400 text-xs mt-1"><span className="text-green-400">Employee:</span> ben@2employee.com / secret</p>
           </div>
 
         </div>
