@@ -398,4 +398,11 @@ export default function DashboardPage() {
                   style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}>
                   <Monitor className="w-5 h-5 text-blue-500 mb-2" />
                   <p className="text-gray-700 font-medium text-sm">View My Gear</p>
-                 
+                 </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+        }
