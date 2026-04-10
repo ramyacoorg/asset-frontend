@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://assettracker-production-e745.up.railway.app",
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "https://assettracker-production-e745.up.railway.app",
 });
 
 api.interceptors.request.use((config) => {
@@ -14,4 +14,4 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-export default api;
+export default api;https://assettracker-production-e745.up.railway.app
