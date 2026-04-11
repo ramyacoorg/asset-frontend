@@ -34,10 +34,12 @@ export default function LoginPage() {
         password: siPass,
       });
       saveAuth(res.data.access_token, res.data.role);
-      router.push("/dashboard");
-    } catch (err: any) {
-      setSiError(err?.response?.data?.detail || "Invalid email or password.");
-    } finally {
+       firouter.push("/dashboard");
+   } catch (err: any) {
+  console.log("Login error:", err);
+  console.log("Error response:", err?.response);
+  setSiError(err?.response?.data?.detail || err?.message || "Network error - cannot reach server");
+   } finally {
       setSiLoading(false);
     }
   }
