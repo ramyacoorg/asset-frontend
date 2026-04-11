@@ -5,13 +5,9 @@ import { useRouter } from "next/navigation";
 export default function LoginPage() {
   const router = useRouter();
   const [tab, setTab] = useState<"signin" | "signup">("signin");
-
-  const [siEmail, setSiEmail] = useState("");
-  const [siPass, setSiPass] = useState("");
-  const [siShowPass, setSiShowPass] = useState(false);
   const [siError, setSiError] = useState("");
   const [siLoading, setSiLoading] = useState(false);
-
+  const [siShowPass, setSiShowPass] = useState(false);
   const [suFirst, setSuFirst] = useState("");
   const [suLast, setSuLast] = useState("");
   const [suEmail, setSuEmail] = useState("");
@@ -28,31 +24,32 @@ export default function LoginPage() {
     e.preventDefault();
     setSiError("");
     setSiLoading(true);
+
+    const form = e.target as HTMLFormElement;
+    const emailVal = (form.elements.namedItem("email") as HTMLInputElement)?.value?.trim();
+    const passVal = (form.elements.namedItem("password") as HTMLInputElement)?.value;
+
+    if (!emailVal || !passVal) {
+      setSiError("Please enter email and password!");
+      setSiLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch(`${API}/api/auth/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
-        body: JSON.stringify({
-          email: siEmail.trim(),
-          password: siPass,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailVal, password: passVal }),
       });
-
       const data = await response.json();
-
       if (!response.ok) {
         setSiError(data.detail || "Invalid email or password.");
         return;
       }
-
       localStorage.setItem("token", data.access_token);
       localStorage.setItem("role", data.role);
-      router.push("/dashboard");
-
-    } catch (err: any) {
+      window.location.href = "/dashboard";
+    } catch (err) {
       setSiError("Cannot connect to server. Please try again.");
     } finally {
       setSiLoading(false);
@@ -64,33 +61,30 @@ export default function LoginPage() {
     setSuError("");
     setSuSuccess("");
     setSuLoading(true);
+
+    const form = e.target as HTMLFormElement;
+    const emailVal = (form.elements.namedItem("suemail") as HTMLInputElement)?.value?.trim();
+    const passVal = (form.elements.namedItem("supassword") as HTMLInputElement)?.value;
+
     try {
       const response = await fetch(`${API}/api/auth/register`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           full_name: `${suFirst} ${suLast}`.trim(),
-          email: suEmail.trim(),
-          password: suPass,
+          email: emailVal || suEmail.trim(),
+          password: passVal || suPass,
           role_id: suRole === "admin" ? 1 : 2,
         }),
       });
-
       const data = await response.json();
-
       if (!response.ok) {
         setSuError(data.detail || "Registration failed. Try again.");
         return;
       }
-
       setSuSuccess("Account created! You can now sign in.");
       setTab("signin");
-      setSiEmail(suEmail.trim());
-
-    } catch (err: any) {
+    } catch (err) {
       setSuError("Cannot connect to server. Please try again.");
     } finally {
       setSuLoading(false);
@@ -153,7 +147,7 @@ export default function LoginPage() {
         .lp-eye svg { width: 15px; height: 15px; stroke: #334155; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
         .lp-forgot { text-align: right; margin-bottom: 14px; margin-top: -6px; }
         .lp-forgot a { font-size: 11px; color: #818cf8; text-decoration: none; }
-        .lp-btn { width: 100%; padding: 12px; background: #4f46e5; border: none; border-radius: 11px; color: #fff; font-size: 13px; font-weight: 700; font-family: 'Plus Jakarta Sans', sans-serif; cursor: pointer; transition: background .2s, transform .1s, box-shadow .2s; box-shadow: 0 4px 14px rgba(79,70,229,.35); margin-top: 4px; }
+        .lp-btn { width: 100%; padding: 12px; background: #4f46e5; border: none; border-radius: 11px; color: #fff; font-size: 13px; font-weight: 700; font-family: 'Plus Jakarta Sans', sans-serif; cursor: pointer; transition: background .2s, box-shadow .2s; box-shadow: 0 4px 14px rgba(79,70,229,.35); margin-top: 4px; }
         .lp-btn:hover:not(:disabled) { background: #4338ca; }
         .lp-btn:disabled { opacity: .5; cursor: not-allowed; }
         .lp-hint { background: rgba(79,70,229,.08); border: 1px solid rgba(99,102,241,.15); border-radius: 10px; padding: 10px 14px; margin-top: 14px; }
@@ -241,20 +235,31 @@ export default function LoginPage() {
                   <label className="lp-label">Email Address</label>
                   <div className="lp-input-wrap">
                     <svg className="lp-input-icon" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="M2 7l10 7 10-7" /></svg>
-                    <input className="lp-input" type="text" placeholder="you@company.com"
-                      value={siEmail}
-                      onChange={(e) => setSiEmail(e.target.value)}
-                      autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck="false" />
+                    <input
+                      className="lp-input"
+                      type="text"
+                      name="email"
+                      placeholder="you@company.com"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
+                    />
                   </div>
                 </div>
                 <div className="lp-field">
                   <label className="lp-label">Password</label>
                   <div className="lp-input-wrap">
                     <svg className="lp-input-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></svg>
-                    <input className="lp-input" type={siShowPass ? "text" : "password"} placeholder="Enter your password"
-                      value={siPass}
-                      onChange={(e) => setSiPass(e.target.value)}
-                      autoComplete="off" autoCorrect="off" autoCapitalize="off" />
+                    <input
+                      className="lp-input"
+                      type={siShowPass ? "text" : "password"}
+                      name="password"
+                      placeholder="Enter your password"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                    />
                     <button type="button" className="lp-eye" onClick={() => setSiShowPass(p => !p)}>
                       <svg viewBox="0 0 24 24">
                         {siShowPass ? (<><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></>) : (<><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></>)}
@@ -267,7 +272,7 @@ export default function LoginPage() {
                   {siLoading ? "Signing in…" : "Sign In to Dashboard"}
                 </button>
                 <div className="lp-hint">
-                  <div className="lp-hint-title">👋 New here?</div>
+                  <div className="lp-hint-title">New here?</div>
                   <div className="lp-hint-row">Click <span>Sign Up</span> tab to create your account first!</div>
                 </div>
                 <div className="lp-note">Don&apos;t have an account? <a href="#" onClick={(e) => { e.preventDefault(); setTab("signup"); }}>Sign up free</a></div>
@@ -279,6 +284,7 @@ export default function LoginPage() {
                 <div className="lp-form-title">Create account</div>
                 <div className="lp-form-sub">Join OptiAsset — it&apos;s free to get started</div>
                 {suError && <div className="lp-error">{suError}</div>}
+                {suSuccess && <div className="lp-success">{suSuccess}</div>}
                 <div className="lp-grid-2">
                   <div className="lp-field">
                     <label className="lp-label">First Name</label>
@@ -299,22 +305,25 @@ export default function LoginPage() {
                   <label className="lp-label">Email Address</label>
                   <div className="lp-input-wrap">
                     <svg className="lp-input-icon" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="M2 7l10 7 10-7" /></svg>
-                    <input className="lp-input" type="text" placeholder="you@company.com" value={suEmail} onChange={(e) => setSuEmail(e.target.value)} required />
+                    <input className="lp-input" type="text" name="suemail" placeholder="you@company.com" value={suEmail} onChange={(e) => setSuEmail(e.target.value)} required />
                   </div>
                 </div>
                 <div className="lp-field">
                   <label className="lp-label">Role</label>
                   <div className="lp-role-row">
                     <button type="button" className={`lp-role-btn${suRole === "admin" ? " selected" : ""}`} onClick={() => setSuRole("admin")}>
-                      <div className="lp-role-icon">🛡️</div><div className="lp-role-label">Admin
-                        </button>
+                      <div className="lp-role-icon">🛡️</div><div className="lp-role-label">Admin</div>
+                    </button>
+                    <button type="button" className={`lp-role-btn${suRole === "employee" ? " selected" : ""}`} onClick={() => setSuRole("employee")}>
+                      <div className="lp-role-icon">👤</div><div className="lp-role-label">Employee</div>
+                    </button>
                   </div>
                 </div>
                 <div className="lp-field">
                   <label className="lp-label">Password</label>
                   <div className="lp-input-wrap">
                     <svg className="lp-input-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></svg>
-                    <input className="lp-input" type={suShowPass ? "text" : "password"} placeholder="Create a strong password" value={suPass} onChange={(e) => setSuPass(e.target.value)} required />
+                    <input className="lp-input" type={suShowPass ? "text" : "password"} name="supassword" placeholder="Create a strong password" value={suPass} onChange={(e) => setSuPass(e.target.value)} required />
                     <button type="button" className="lp-eye" onClick={() => setSuShowPass(p => !p)}>
                       <svg viewBox="0 0 24 24">
                         {suShowPass ? (<><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></>) : (<><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></>)}
@@ -336,4 +345,3 @@ export default function LoginPage() {
     </>
   );
 }
-                        
