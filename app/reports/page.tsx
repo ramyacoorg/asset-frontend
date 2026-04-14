@@ -1,270 +1,162 @@
+// app/reports/page.tsx
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { getRole, logout, getToken } from "@/lib/auth";
-import { Monitor, LogOut, LayoutDashboard, Package, Users, GitBranch, FileText, Menu, X, TrendingUp, Download, AlertTriangle } from "lucide-react";
+import api from "@/lib/api";
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
-const API = "https://assettracker-production-e745.up.railway.app";
+const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#f43f5e", "#22d3ee", "#a78bfa"];
 
-interface Stats {
-  total_assets: number;
-  available: number;
-  assigned: number;
-  under_repair: number;
-  retired: number;
-  total_users: number;
-  open_issues: number;
-  resolved_issues: number;
-}
+const glass = {
+  background: "rgba(255,255,255,0.07)",
+  backdropFilter: "blur(16px)",
+  WebkitBackdropFilter: "blur(16px)",
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: "1rem",
+  padding: "1.5rem",
+};
 
 export default function ReportsPage() {
-  const router = useRouter();
-  const [role, setRole] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const r = getRole();
-    if (!r) router.push("/login");
-    else if (r !== "admin") router.push("/dashboard");
-    else { setRole(r); fetchStats(); }
-  }, [router]);
+    api.get("/api/dashboard/reports")
+      .then((res) => setData(res.data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
 
-  const fetchStats = async () => {
+  const handleExportCSV = async () => {
     try {
-      const res = await fetch(`${API}/api/dashboard/admin`, {
-        headers: { Authorization: `Bearer ${getToken()}` }
-      });
-      if (res.ok) setStats(await res.json());
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
+      const res = await api.get("/api/dashboard/reports/export-csv", { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "optiasset_report.csv");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (e) {
+      alert("Failed to export CSV");
+    }
   };
 
-  const adminLinks = [
-    { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
-    { icon: Package, label: "Inventory", href: "/inventory" },
-    { icon: Users, label: "All Users", href: "/users" },
-    { icon: GitBranch, label: "Assignments", href: "/assignments" },
-    { icon: AlertTriangle, label: "Issues", href: "/issues" },
-    { icon: FileText, label: "Reports", href: "/reports", active: true },
-  ];
-
-  if (!role) return null;
-
-  // Donut Chart SVG
-  const DonutChart = () => {
-    if (!stats) return null;
-    const total = stats.total_assets || 1;
-    const c = 2 * Math.PI * 45;
-    const availDash = (stats.available / total) * c;
-    const assignDash = (stats.assigned / total) * c;
-    const repairDash = (stats.under_repair / total) * c;
-    const retiredDash = (stats.retired / total) * c;
-    let offset = c * 0.25;
-    return (
-      <svg width="160" height="160" viewBox="0 0 110 110">
-        <circle cx="55" cy="55" r="45" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="18" />
-        <circle cx="55" cy="55" r="45" fill="none" stroke="#3b82f6" strokeWidth="18"
-          strokeDasharray={`${availDash} ${c - availDash}`} strokeDashoffset={offset} />
-        <circle cx="55" cy="55" r="45" fill="none" stroke="#10b981" strokeWidth="18"
-          strokeDasharray={`${assignDash} ${c - assignDash}`} strokeDashoffset={offset - availDash} />
-        <circle cx="55" cy="55" r="45" fill="none" stroke="#f59e0b" strokeWidth="18"
-          strokeDasharray={`${repairDash} ${c - repairDash}`} strokeDashoffset={offset - availDash - assignDash} />
-        <circle cx="55" cy="55" r="45" fill="none" stroke="#ef4444" strokeWidth="18"
-          strokeDasharray={`${retiredDash} ${c - retiredDash}`} strokeDashoffset={offset - availDash - assignDash - repairDash} />
-        <text x="55" y="50" textAnchor="middle" fill="white" fontSize="16" fontWeight="bold">{total}</text>
-        <text x="55" y="65" textAnchor="middle" fill="#94a3b8" fontSize="8">Total</text>
-      </svg>
-    );
-  };
-
-  // Bar Chart SVG
-  const BarChart = () => {
-    if (!stats) return null;
-    const bars = [
-      { label: "Available", value: stats.available, color: "#3b82f6" },
-      { label: "Assigned", value: stats.assigned, color: "#10b981" },
-      { label: "Repair", value: stats.under_repair, color: "#f59e0b" },
-      { label: "Retired", value: stats.retired, color: "#ef4444" },
-      { label: "Open Issues", value: stats.open_issues, color: "#8b5cf6" },
-      { label: "Resolved", value: stats.resolved_issues, color: "#06b6d4" },
-    ];
-    const maxVal = Math.max(...bars.map(b => b.value), 1);
-    const chartH = 120;
-    const barW = 35;
-    const gap = 10;
-    const totalW = bars.length * (barW + gap);
-    return (
-      <svg width="100%" height="180" viewBox={`0 0 ${totalW + 20} 180`}>
-        {bars.map((bar, i) => {
-          const barH = Math.max((bar.value / maxVal) * chartH, 4);
-          const x = 10 + i * (barW + gap);
-          const y = 10 + chartH - barH;
-          return (
-            <g key={bar.label}>
-              <rect x={x} y={y} width={barW} height={barH} fill={bar.color} rx="4" />
-              <text x={x + barW / 2} y={y - 4} textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">{bar.value}</text>
-              <text x={x + barW / 2} y={145} textAnchor="middle" fill="#94a3b8" fontSize="7">{bar.label}</text>
-            </g>
-          );
-        })}
-        <line x1="10" y1="130" x2={totalW + 10} y2="130" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
-      </svg>
-    );
-  };
+  if (loading) return (
+    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,#1e1b4b,#0f172a)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <p style={{ color: "#a5b4fc" }}>Loading reports...</p>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen flex" style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)" }}>
-
-      {/* SIDEBAR */}
-      <div className={`${sidebarOpen ? "w-64" : "w-16"} flex flex-col transition-all duration-500`}
-        style={{ background: "rgba(255,255,255,0.05)", backdropFilter: "blur(24px)", borderRight: "1px solid rgba(255,255,255,0.1)" }}>
-        <div className="p-4 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          {sidebarOpen && (
-            <div className="flex items-center gap-2">
-              <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-xl">
-                <Monitor className="w-4 h-4 text-white" />
-              </div>
-              <span className="font-bold text-white text-sm">OptiAsset</span>
-            </div>
-          )}
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-gray-400 hover:text-white">
-            {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-          </button>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,#1e1b4b,#0f172a,#064e3b)", padding: "2rem", fontFamily: "sans-serif" }}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+        <div>
+          <h1 style={{ color: "#e0e7ff", fontSize: "1.75rem", fontWeight: 700, margin: 0 }}>Reports</h1>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.875rem", margin: "4px 0 0" }}>Asset analytics and summaries</p>
         </div>
-        {sidebarOpen && (
-          <div className="px-4 py-3">
-            <div className="flex items-center gap-2 bg-blue-500/10 px-3 py-2 rounded-xl border border-blue-500/20">
-              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
-              <span className="text-xs font-semibold text-blue-300"> Administrator</span>
-            </div>
+        <button
+          onClick={handleExportCSV}
+          style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)", color: "#fff", border: "none", borderRadius: "0.75rem", padding: "0.75rem 1.25rem", fontWeight: 600, cursor: "pointer", fontSize: "0.875rem", display: "flex", alignItems: "center", gap: "6px" }}
+        >
+          ⬇ Export CSV
+        </button>
+      </div>
+
+      {/* Summary Cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: "0.75rem", marginBottom: "1.5rem" }}>
+        {data && [
+          { label: "Total Assets", value: data.summary.total_assets, color: "#6366f1" },
+          { label: "Assigned", value: data.summary.assigned, color: "#22d3ee" },
+          { label: "Available", value: data.summary.available, color: "#10b981" },
+          { label: "Under Repair", value: data.summary.under_repair, color: "#f59e0b" },
+          { label: "Total Issues", value: data.summary.total_issues, color: "#a78bfa" },
+          { label: "Open Issues", value: data.summary.open_issues, color: "#f43f5e" },
+        ].map((s) => (
+          <div key={s.label} style={{ ...glass, padding: "1rem" }}>
+            <p style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 4px" }}>{s.label}</p>
+            <p style={{ color: s.color, fontSize: "1.75rem", fontWeight: 700, margin: 0 }}>{s.value}</p>
           </div>
-        )}
-        <nav className="flex-1 p-3 space-y-1">
-          {adminLinks.map((link) => (
-            <button key={link.label} onClick={() => router.push(link.href)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm ${
-                link.active ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border border-blue-500/20"
-                : "text-gray-400 hover:text-white hover:bg-white/10"}`}>
-              <link.icon className="w-4 h-4 shrink-0" />
-              {sidebarOpen && <span>{link.label}</span>}
-            </button>
-          ))}
-        </nav>
-        <div className="p-3" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-          <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 transition-all text-sm">
-            <LogOut className="w-4 h-4 shrink-0" />
-            {sidebarOpen && <span>Logout</span>}
-          </button>
+        ))}
+      </div>
+
+      {/* Charts Row */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>
+        <div style={glass}>
+          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.85rem", fontWeight: 500, marginBottom: "1rem" }}>Asset Status Distribution</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie
+                data={data?.status_chart}
+                cx="50%"
+                cy="50%"
+                innerRadius={55}
+                outerRadius={85}
+                dataKey="value"
+                label={({ name, value }) => `${name}: ${value}`}
+                labelLine={false}
+              >
+                {data?.status_chart.map((_: any, i: number) => (
+                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip contentStyle={{ background: "#1e293b", border: "none", color: "#e2e8f0", borderRadius: "0.5rem" }} />
+              <Legend wrapperStyle={{ color: "rgba(255,255,255,0.6)", fontSize: "0.75rem" }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div style={glass}>
+          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.85rem", fontWeight: 500, marginBottom: "1rem" }}>Assets by Category</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={data?.category_chart} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+              <XAxis dataKey="category" tick={{ fill: "#94a3b8", fontSize: 10 }} />
+              <YAxis tick={{ fill: "#94a3b8", fontSize: 10 }} />
+              <Tooltip contentStyle={{ background: "#1e293b", border: "none", color: "#e2e8f0", borderRadius: "0.5rem" }} />
+              <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                {data?.category_chart.map((_: any, i: number) => (
+                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
-      {/* MAIN */}
-      <div className="flex-1 p-8 overflow-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white">Reports </h1>
-            <p className="text-gray-400 text-sm mt-1">Asset analytics and summaries</p>
-          </div>
-          <button className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-lg">
-            <Download className="w-4 h-4" /> Export CSV
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="text-center py-20">
-            <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4" />
-            <p className="text-gray-400">Loading reports...</p>
-          </div>
-        ) : stats ? (
-          <>
-            {/* Stat Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              {[
-                { label: "Total Assets", value: stats.total_assets, color: "from-blue-400 to-blue-600" },
-                { label: "Assigned", value: stats.assigned, color: "from-green-400 to-emerald-500" },
-                { label: "Available", value: stats.available, color: "from-purple-400 to-purple-600" },
-                { label: "Under Repair", value: stats.under_repair, color: "from-orange-400 to-red-400" },
-              ].map((stat) => (
-                <div key={stat.label} className="rounded-2xl p-5"
-                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                  <p className={`text-3xl font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}>{stat.value}</p>
-                  <p className="text-gray-400 text-sm mt-1">{stat.label}</p>
-                  <div className="mt-2 w-full bg-white/10 rounded-full h-1.5">
-                    <div className={`bg-gradient-to-r ${stat.color} h-1.5 rounded-full`}
-                      style={{ width: `${stats.total_assets ? (stat.value / stats.total_assets) * 100 : 0}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Charts Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              {/* Donut Chart */}
-              <div className="rounded-2xl p-6"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-blue-400" /> Asset Distribution
-                </h3>
-                <div className="flex items-center gap-8">
-                  <DonutChart />
-                  <div className="space-y-3">
-                    {[
-                      { label: "Available", value: stats.available, color: "bg-blue-500" },
-                      { label: "Assigned", value: stats.assigned, color: "bg-emerald-500" },
-                      { label: "Under Repair", value: stats.under_repair, color: "bg-amber-500" },
-                      { label: "Retired", value: stats.retired, color: "bg-red-500" },
-                    ].map((item) => (
-                      <div key={item.label} className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${item.color}`} />
-                        <span className="text-gray-300 text-xs">{item.label}: <span className="text-white font-semibold">{item.value}</span></span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Bar Chart */}
-              <div className="rounded-2xl p-6"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-purple-400" /> Assets & Issues Overview
-                </h3>
-                <BarChart />
-              </div>
-            </div>
-
-            {/* Progress Bars */}
-            <div className="rounded-2xl p-6"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
-              <h3 className="text-white font-semibold mb-5">Detailed Breakdown</h3>
-              <div className="space-y-4">
-                {[
-                  { label: "Available Assets", value: stats.available, total: stats.total_assets, color: "from-blue-400 to-blue-600" },
-                  { label: "Assigned Assets", value: stats.assigned, total: stats.total_assets, color: "from-green-400 to-emerald-500" },
-                  { label: "Under Repair", value: stats.under_repair, total: stats.total_assets, color: "from-amber-400 to-orange-500" },
-                  { label: "Retired Assets", value: stats.retired, total: stats.total_assets, color: "from-red-400 to-red-600" },
-                  { label: "Open Issues", value: stats.open_issues, total: stats.open_issues + stats.resolved_issues || 1, color: "from-purple-400 to-purple-600" },
-                  { label: "Resolved Issues", value: stats.resolved_issues, total: stats.open_issues + stats.resolved_issues || 1, color: "from-cyan-400 to-cyan-600" },
-                ].map((item) => (
-                  <div key={item.label}>
-                    <div className="flex justify-between text-xs mb-1.5">
-                      <span className="text-gray-300">{item.label}</span>
-                      <span className="text-white font-semibold">{item.value} <span className="text-gray-500">/ {item.total}</span></span>
-                    </div>
-                    <div className="w-full bg-white/10 rounded-full h-2.5">
-                      <div className={`bg-gradient-to-r ${item.color} h-2.5 rounded-full transition-all duration-1000`}
-                        style={{ width: `${item.total ? (item.value / item.total) * 100 : 0}%` }} />
-                    </div>
-                  </div>
+      {/* Assets Table */}
+      <div style={glass}>
+        <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.85rem", fontWeight: 500, marginBottom: "1rem" }}>All Assets — Detailed View</p>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
+            <thead>
+              <tr>
+                {["Code", "Name", "Category", "Status", "Assigned To", "Purchase Date"].map((h) => (
+                  <th key={h} style={{ color: "rgba(255,255,255,0.4)", fontWeight: 500, textAlign: "left", padding: "0.5rem 0.75rem", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>{h}</th>
                 ))}
-              </div>
-            </div>
-          </>
-        ) : (
-          <p className="text-gray-400 text-center py-20">No data available</p>
-        )}
+              </tr>
+            </thead>
+            <tbody>
+              {data?.assets_table.map((row: any, i: number) => (
+                <tr key={i} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                  <td style={{ padding: "0.6rem 0.75rem", color: "#6366f1", fontFamily: "monospace" }}>{row.asset_code}</td>
+                  <td style={{ padding: "0.6rem 0.75rem", color: "#e2e8f0" }}>{row.asset_name}</td>
+                  <td style={{ padding: "0.6rem 0.75rem", color: "rgba(255,255,255,0.5)" }}>{row.asset_category}</td>
+                  <td style={{ padding: "0.6rem 0.75rem" }}>
+                    <span style={{
+                      fontSize: "0.7rem", padding: "2px 8px", borderRadius: "999px", fontWeight: 500,
+                      background: row.asset_status === "assigned" ? "rgba(34,211,238,0.15)" : row.asset_status === "available" ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)",
+                      color: row.asset_status === "assigned" ? "#22d3ee" : row.asset_status === "available" ? "#10b981" : "#f59e0b"
+                    }}>
+                      {row.asset_status}
+                    </span>
+                  </td>
+                  <td style={{ padding: "0.6rem 0.75rem", color: "rgba(255,255,255,0.5)" }}>{row.assigned_to}</td>
+                  <td style={{ padding: "0.6rem 0.75rem", color: "rgba(255,255,255,0.35)", fontSize: "0.75rem" }}>{row.purchase_date}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
