@@ -96,11 +96,10 @@ export default function IssuesPage() {
         <nav className="flex-1 p-3 space-y-1">
           {adminLinks.map((link) => (
             <button key={link.label} onClick={() => router.push(link.href)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm ${
-                link.active
-                  ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border border-blue-500/20"
-                  : "text-gray-400 hover:text-white hover:bg-white/10"
-              }`}>
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm ${link.active
+                ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border border-blue-500/20"
+                : "text-gray-400 hover:text-white hover:bg-white/10"
+                }`}>
               <link.icon className="w-4 h-4 shrink-0" />
               {sidebarOpen && <span>{link.label}</span>}
             </button>
@@ -166,13 +165,12 @@ export default function IssuesPage() {
                     {/* Issue ID and Status */}
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-blue-400 text-xs font-mono">#{issue.id}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                        issue.issue_status === "open"
-                          ? "bg-yellow-500/20 text-yellow-400"
-                          : issue.issue_status === "in_progress"
-                            ? "bg-blue-500/20 text-blue-400"
-                            : "bg-green-500/20 text-green-400"
-                      }`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${issue.issue_status === "open"
+                        ? "bg-yellow-500/20 text-yellow-400"
+                        : issue.issue_status === "in_progress"
+                          ? "bg-blue-500/20 text-blue-400"
+                          : "bg-green-500/20 text-green-400"
+                        }`}>
                         {issue.issue_status}
                       </span>
                     </div>
