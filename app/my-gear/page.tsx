@@ -1,423 +1,185 @@
+
 "use client";
-import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { getRole, logout, getToken } from "@/lib/auth";
-import {
-  Monitor, LogOut, LayoutDashboard, FileText,
-  Menu, X, Laptop, Smartphone, AlertTriangle,
-  CheckCircle, Clock, Wifi, Battery, Shield, Camera, Upload
-} from "lucide-react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useEffect, useState } from "react";
+import api from "@/lib/api";
+
+const RAILWAY = "https://assettracker-production-e745.up.railway.app";
 
 export default function MyGearPage() {
-  const router = useRouter();
-  const [role, setRole] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [reportModal, setReportModal] = useState(false);
-  const [selectedAsset, setSelectedAsset] = useState("");
-  const [selectedAssetId, setSelectedAssetId] = useState<number>(0);
-  const [issueDescription, setIssueDescription] = useState("");
-  const [issueType, setIssueType] = useState("Hardware Problem");
-  const [urgency, setUrgency] = useState("Medium");
+  const [assets, setAssets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showIssueModal, setShowIssueModal] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState<any>(null);
+  const [issueForm, setIssueForm] = useState({ description: "", urgency: "Medium" });
   const [photo, setPhoto] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const photoInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const r = getRole();
-    if (!r) router.push("/login");
-    else setRole(r);
-  }, [router]);
-
-  if (!role) return null;
-
-  const assets = [
-    { id: 1, name: "Dell XPS 15", code: "DL-001", type: "Laptop", icon: Laptop,
-      status: "Active", assigned: "Jan 15, 2026", battery: 85,
-      color: "from-blue-400 to-blue-600", bg: "from-blue-50 to-blue-100/50" },
-    { id: 2, name: "iPhone 14 Pro", code: "IP-014", type: "Mobile", icon: Smartphone,
-      status: "Active", assigned: "Feb 1, 2026", battery: 72,
-      color: "from-purple-400 to-purple-600", bg: "from-purple-50 to-purple-100/50" },
-  ];
-
-  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setPhoto(file);
-    // Show preview
-    const reader = new FileReader();
-    reader.onload = () => setPhotoPreview(reader.result as string);
-    reader.readAsDataURL(file);
+  const fetchAssets = () => {
+    setLoading(true);
+    api.get("/api/assignments/my")
+      .then(res => setAssets(res.data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
   };
 
-  const handleSubmitIssue = async () => {
-    if (!issueDescription.trim()) return;
+  useEffect(() => { fetchAssets(); }, []);
+
+  const openIssueModal = (asset: any) => {
+    setSelectedAsset(asset);
+    setIssueForm({ description: "", urgency: "Medium" });
+    setPhoto(null);
+    setShowIssueModal(true);
+  };
+
+  const handleReportIssue = async () => {
+    if (!issueForm.description.trim()) {
+      alert("Please describe the issue");
+      return;
+    }
     setSubmitting(true);
-
     try {
-      const token = getToken();
-      const formData = new FormData();
-      formData.append("asset_id", selectedAssetId.toString());
-      formData.append("issue_description", `[${issueType}] [${urgency}] ${issueDescription}`);
-      if (photo) formData.append("file", photo);
+      const token = localStorage.getItem("token");
+      const fd = new FormData();
+      fd.append("asset_id", selectedAsset.asset_id.toString());
+      fd.append("issue_description", `[${issueForm.urgency}] ${issueForm.description}`);
+      if (photo) fd.append("photo", photo);
 
-      await fetch("http://localhost:8000/api/issues/report", {
+      const res = await fetch(`${RAILWAY}/api/issues/report`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
-        body: formData,
+        body: fd,
       });
-
-      setSuccess(true);
-      setTimeout(() => {
-        setReportModal(false);
-        setSuccess(false);
-        setIssueDescription("");
-        setPhoto(null);
-        setPhotoPreview(null);
-      }, 2000);
-
-    } catch (err) {
-      console.error("Failed to submit issue", err);
+      if (!res.ok) throw new Error("Failed");
+      setShowIssueModal(false);
+      alert("Issue reported successfully!");
+    } catch {
+      alert("Failed to report issue");
     } finally {
       setSubmitting(false);
     }
   };
 
+  const bg: React.CSSProperties = {
+    minHeight: "100vh",
+    background: "linear-gradient(135deg,#fdf4ff,#eff6ff,#f0fdf4)",
+    padding: "1.5rem",
+    fontFamily: "sans-serif",
+  };
+
+  const categoryIcon: any = {
+    Laptop: "💻", Mobile: "📱", Monitor: "🖥️", Tablet: "📟", Default: "📦",
+  };
+
   return (
-    <div className="min-h-screen flex"
-      style={{ background: "linear-gradient(135deg, #e0e7ff 0%, #f0f9ff 40%, #fdf4ff 100%)" }}>
+    <div style={bg}>
+      <div style={{ marginBottom: "1.5rem" }}>
+        <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1e293b", margin: 0 }}>My Gear</h1>
+        <p style={{ color: "#64748b", fontSize: "0.85rem", margin: "4px 0 0" }}>Assets assigned to you</p>
+      </div>
 
-      {/* SIDEBAR */}
-      <div className={`${sidebarOpen ? "w-64" : "w-16"} flex flex-col transition-all duration-500`}
-        style={{
-          background: "rgba(255,255,255,0.45)",
-          backdropFilter: "blur(24px)",
-          WebkitBackdropFilter: "blur(24px)",
-          borderRight: "1px solid rgba(255,255,255,0.6)",
-          boxShadow: "4px 0 24px rgba(0,0,0,0.06)",
-        }}>
-        <div className="p-4 flex items-center justify-between"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.5)" }}>
-          {sidebarOpen && (
-            <div className="flex items-center gap-2">
-              <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-xl shadow-lg">
-                <Monitor className="w-4 h-4 text-white" />
-              </div>
-              <span className="font-bold text-gray-800 text-sm">OptiAsset</span>
-            </div>
-          )}
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-gray-400 hover:text-gray-700">
-            {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-          </button>
+      {loading ? (
+        <p style={{ color: "#94a3b8" }}>Loading your assets...</p>
+      ) : assets.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "3rem 0" }}>
+          <p style={{ fontSize: "2rem" }}>📭</p>
+          <p style={{ color: "#94a3b8" }}>No assets assigned to you yet.</p>
         </div>
-
-        {sidebarOpen && (
-          <div className="px-4 py-3">
-            <div className="flex items-center gap-2 bg-gradient-to-r from-green-400/20 to-emerald-400/20 px-3 py-2 rounded-xl border border-green-200/50">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-xs font-semibold text-green-700">👤 Employee</span>
+      ) : (
+        assets.map(asset => (
+          <div key={asset.id} style={{ background: "#fff", borderRadius: "1.25rem", padding: "1.25rem", marginBottom: "1rem", boxShadow: "0 2px 16px rgba(0,0,0,0.07)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.875rem" }}>
+              <div style={{ width: 52, height: 52, borderRadius: "1rem", background: "linear-gradient(135deg,#ede9fe,#ddd6fe)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>
+                {categoryIcon[asset.asset_category] || categoryIcon.Default}
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontWeight: 700, color: "#1e293b", margin: 0, fontSize: "1rem" }}>{asset.asset_name}</p>
+                <p style={{ color: "#64748b", fontSize: "0.78rem", margin: "2px 0 0" }}>
+                  {asset.asset_code} · {asset.asset_category}
+                </p>
+              </div>
+              <span style={{ fontSize: "0.72rem", padding: "3px 10px", borderRadius: 999, background: "#dcfce7", color: "#16a34a", fontWeight: 600 }}>
+                Active
+              </span>
             </div>
-          </div>
-        )}
 
-        <nav className="flex-1 p-3 space-y-1">
-          {[
-            { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
-            { icon: Monitor, label: "My Gear", href: "/my-gear", active: true },
-            { icon: FileText, label: "My Tickets", href: "/my-tickets" },
-          ].map((link) => (
-            <button key={link.label} onClick={() => router.push(link.href)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm ${
-                link.active
-                  ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-700 font-medium border border-blue-200/50"
-                  : "text-gray-500 hover:text-gray-800 hover:bg-white/50"
-              }`}>
-              <link.icon className="w-4 h-4 shrink-0" />
-              {sidebarOpen && <span>{link.label}</span>}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "#f8fafc", borderRadius: "0.75rem", marginBottom: "0.875rem" }}>
+              <div style={{ textAlign: "center" }}>
+                <p style={{ color: "#94a3b8", fontSize: "0.68rem", margin: 0, textTransform: "uppercase" }}>Assigned</p>
+                <p style={{ color: "#1e293b", fontWeight: 600, fontSize: "0.85rem", margin: "2px 0 0" }}>
+                  {new Date(asset.assigned_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                </p>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <p style={{ color: "#94a3b8", fontSize: "0.68rem", margin: 0, textTransform: "uppercase" }}>Status</p>
+                <p style={{ color: "#16a34a", fontWeight: 600, fontSize: "0.85rem", margin: "2px 0 0" }}>In Use</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => openIssueModal(asset)}
+              style={{ width: "100%", background: "linear-gradient(135deg,#6366f1,#8b5cf6)", color: "#fff", border: "none", borderRadius: "0.875rem", padding: "0.75rem", cursor: "pointer", fontWeight: 600, fontSize: "0.9rem" }}
+            >
+              🔧 Report Issue
             </button>
-          ))}
-        </nav>
+          </div>
+        ))
+      )}
 
-        <div className="p-3" style={{ borderTop: "1px solid rgba(255,255,255,0.5)" }}>
-          <button onClick={logout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-400 hover:bg-red-50/50 transition-all text-sm">
-            <LogOut className="w-4 h-4 shrink-0" />
-            {sidebarOpen && <span>Logout</span>}
-          </button>
-        </div>
-      </div>
-
-      {/* MAIN CONTENT */}
-      <div className="flex-1 p-8 overflow-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">My Gear 💻</h1>
-          <p className="text-gray-500 text-sm mt-1">All devices currently assigned to you</p>
-        </div>
-
-        {/* Stats Row */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          {[
-            { label: "Total Devices", value: "2", icon: Monitor, color: "from-blue-400 to-blue-600" },
-            { label: "All Active", value: "2", icon: CheckCircle, color: "from-green-400 to-emerald-500" },
-            { label: "Open Tickets", value: "0", icon: AlertTriangle, color: "from-orange-400 to-red-400" },
-          ].map((stat) => (
-            <div key={stat.label} className="rounded-2xl p-5 flex items-center gap-4"
-              style={{
-                background: "rgba(255,255,255,0.55)",
-                backdropFilter: "blur(20px)",
-                border: "1px solid rgba(255,255,255,0.7)",
-                boxShadow: "0 8px 32px rgba(0,0,0,0.06)",
-              }}>
-              <div className={`bg-gradient-to-br ${stat.color} p-3 rounded-xl shadow-lg`}>
-                <stat.icon className="w-5 h-5 text-white" />
-              </div>
+      {/* Report Issue Modal */}
+      {showIssueModal && selectedAsset && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 50 }}>
+          <div style={{ background: "#fff", borderRadius: "1.5rem 1.5rem 0 0", padding: "1.75rem", width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
               <div>
-                <p className="text-2xl font-bold text-gray-800">{stat.value}</p>
-                <p className="text-gray-500 text-xs">{stat.label}</p>
+                <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#1e293b", margin: 0 }}>Report an Issue 🔧</h2>
+                <p style={{ color: "#64748b", fontSize: "0.8rem", margin: "2px 0 0" }}>{selectedAsset.asset_name}</p>
               </div>
+              <button onClick={() => setShowIssueModal(false)} style={{ background: "#f1f5f9", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", fontSize: "1.1rem" }}>×</button>
             </div>
-          ))}
-        </div>
 
-        {/* Asset Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {assets.map((asset) => (
-            <div key={asset.id} className="rounded-3xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
-              style={{
-                background: "rgba(255,255,255,0.6)",
-                backdropFilter: "blur(24px)",
-                border: "1px solid rgba(255,255,255,0.8)",
-                boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
-              }}>
-              {/* Card Top */}
-              <div className={`bg-gradient-to-r ${asset.color} p-6 relative overflow-hidden`}>
-                <div className="absolute top-[-20px] right-[-20px] w-32 h-32 rounded-full bg-white/10 blur-xl" />
-                <div className="relative z-10 flex items-center justify-between">
-                  <div>
-                    <p className="text-white/70 text-xs font-medium">{asset.type}</p>
-                    <h3 className="text-white text-xl font-bold mt-1">{asset.name}</h3>
-                    <p className="text-white/60 text-xs mt-1">#{asset.code}</p>
-                  </div>
-                  <div className="bg-white/20 backdrop-blur-sm p-4 rounded-2xl">
-                    <asset.icon className="w-8 h-8 text-white" />
-                  </div>
-                </div>
-              </div>
+            <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#374151", display: "block", marginBottom: 6 }}>Description *</label>
+            <textarea
+              value={issueForm.description}
+              onChange={e => setIssueForm({ ...issueForm, description: e.target.value })}
+              placeholder="Describe the problem in detail..."
+              rows={3}
+              style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: "0.75rem", padding: "0.65rem 0.875rem", marginBottom: "1rem", fontSize: "0.9rem", resize: "vertical", background: "#f8fafc", boxSizing: "border-box" }}
+            />
 
-              {/* Card Body */}
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                    <span className="text-green-600 text-sm font-medium">Active</span>
-                  </div>
-                  <span className="text-gray-400 text-xs">Assigned {asset.assigned}</span>
-                </div>
-
-                <div className="flex gap-2 mb-5">
-                  <div className="flex items-center gap-1.5 bg-blue-50 px-3 py-1.5 rounded-full">
-                    <Wifi className="w-3 h-3 text-blue-500" />
-                    <span className="text-blue-600 text-xs">Connected</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-green-50 px-3 py-1.5 rounded-full">
-                    <Battery className="w-3 h-3 text-green-500" />
-                    <span className="text-green-600 text-xs">{asset.battery}%</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-purple-50 px-3 py-1.5 rounded-full">
-                    <Shield className="w-3 h-3 text-purple-500" />
-                    <span className="text-purple-600 text-xs">Protected</span>
-                  </div>
-                </div>
-
-                {/* Battery Bar */}
-                <div className="mb-5">
-                  <div className="flex justify-between text-xs text-gray-400 mb-1.5">
-                    <span>Battery Health</span>
-                    <span>{asset.battery}%</span>
-                  </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2">
-                    <div className={`bg-gradient-to-r ${asset.color} h-2 rounded-full`}
-                      style={{ width: `${asset.battery}%` }} />
-                  </div>
-                </div>
-
-                {/* Report Button */}
+            <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#374151", display: "block", marginBottom: 8 }}>Urgency</label>
+            <div style={{ display: "flex", gap: 8, marginBottom: "1rem" }}>
+              {["Low", "Medium", "High"].map(u => (
                 <button
-                  onClick={() => {
-                    setSelectedAsset(asset.name);
-                    setSelectedAssetId(asset.id);
-                    setReportModal(true);
-                  }}
-                  className="w-full py-3 rounded-2xl text-sm font-semibold transition-all duration-200 hover:shadow-lg"
+                  key={u}
+                  onClick={() => setIssueForm({ ...issueForm, urgency: u })}
                   style={{
-                    background: "rgba(239,68,68,0.08)",
-                    border: "1px solid rgba(239,68,68,0.2)",
-                    color: "#ef4444",
-                  }}>
-                  🔧 Report an Issue
-                </button>
-              </div>
+                    flex: 1, padding: "0.5rem", borderRadius: "0.75rem", cursor: "pointer", fontSize: "0.875rem", fontWeight: 600,
+                    background: issueForm.urgency === u ? (u === "High" ? "#fee2e2" : u === "Medium" ? "#fef3c7" : "#d1fae5") : "#f1f5f9",
+                    color: issueForm.urgency === u ? (u === "High" ? "#dc2626" : u === "Medium" ? "#d97706" : "#059669") : "#94a3b8",
+                    border: issueForm.urgency === u ? `2px solid ${u === "High" ? "#fca5a5" : u === "Medium" ? "#fcd34d" : "#6ee7b7"}` : "2px solid transparent",
+                  }}
+                >{u}</button>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
 
-      {/* REPORT ISSUE MODAL */}
-      {reportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.3)", backdropFilter: "blur(8px)" }}>
-          <div className="w-full max-w-md rounded-3xl p-6 max-h-[90vh] overflow-y-auto"
-            style={{
-              background: "rgba(255,255,255,0.90)",
-              backdropFilter: "blur(32px)",
-              border: "1px solid rgba(255,255,255,0.9)",
-              boxShadow: "0 32px 64px rgba(0,0,0,0.15)",
-            }}>
+            <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#374151", display: "block", marginBottom: 6 }}>
+              Photo <span style={{ color: "#94a3b8", fontWeight: 400 }}>(optional)</span>
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={e => setPhoto(e.target.files?.[0] || null)}
+              style={{ width: "100%", marginBottom: "1.5rem", fontSize: "0.85rem" }}
+            />
 
-            {/* Success State */}
-            {success ? (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="w-8 h-8 text-green-500" />
-                </div>
-                <h3 className="text-gray-800 font-bold text-lg">Issue Reported!</h3>
-                <p className="text-gray-500 text-sm mt-1">Your ticket has been submitted successfully.</p>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h2 className="text-gray-800 font-bold text-lg">Report an Issue 🔧</h2>
-                    <p className="text-gray-400 text-sm mt-0.5">{selectedAsset}</p>
-                  </div>
-                  <button onClick={() => {
-                    setReportModal(false);
-                    setPhoto(null);
-                    setPhotoPreview(null);
-                    setIssueDescription("");
-                  }} className="text-gray-400 hover:text-gray-600 bg-gray-100 p-2 rounded-xl">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  {/* Issue Type */}
-                  <div>
-                    <label className="text-gray-600 text-sm font-medium mb-2 block">Issue Type</label>
-                    <select
-                      value={issueType}
-                      onChange={(e) => setIssueType(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-200 text-gray-700 px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-blue-400">
-                      <option>Hardware Problem</option>
-                      <option>Software Problem</option>
-                      <option>Battery Issue</option>
-                      <option>Screen Damage</option>
-                      <option>Other</option>
-                    </select>
-                  </div>
-
-                  {/* Description */}
-                  <div>
-                    <label className="text-gray-600 text-sm font-medium mb-2 block">Description</label>
-                    <textarea
-                      rows={3}
-                      value={issueDescription}
-                      onChange={(e) => setIssueDescription(e.target.value)}
-                      placeholder="Describe the issue in detail..."
-                      className="w-full bg-gray-50 border border-gray-200 text-gray-700 px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-blue-400 resize-none"
-                    />
-                  </div>
-
-                  {/* Urgency */}
-                  <div>
-                    <label className="text-gray-600 text-sm font-medium mb-2 block">Urgency</label>
-                    <div className="flex gap-2">
-                      {["Low", "Medium", "High"].map((u) => (
-                        <button key={u}
-                          onClick={() => setUrgency(u)}
-                          className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${
-                            urgency === u
-                              ? u === "High"
-                                ? "bg-red-50 border-red-300 text-red-600"
-                                : u === "Medium"
-                                  ? "bg-orange-50 border-orange-300 text-orange-600"
-                                  : "bg-green-50 border-green-300 text-green-600"
-                              : "bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100"
-                          }`}>
-                          {u}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 📸 PHOTO UPLOAD */}
-                  <div>
-                    <label className="text-gray-600 text-sm font-medium mb-2 block">
-                      Attach Photo <span className="text-gray-400 font-normal">(optional)</span>
-                    </label>
-
-                    {photoPreview ? (
-                      // Show preview if photo selected
-                      <div className="relative rounded-xl overflow-hidden border border-gray-200">
-                        <img src={photoPreview} alt="Issue photo" className="w-full h-40 object-cover" />
-                        <button
-                          onClick={() => { setPhoto(null); setPhotoPreview(null); }}
-                          className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-lg">
-                          <X className="w-3 h-3" />
-                        </button>
-                        <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded-lg">
-                          📎 {photo?.name}
-                        </div>
-                      </div>
-                    ) : (
-                      // Upload button
-                      <button
-                        onClick={() => photoInputRef.current?.click()}
-                        className="w-full border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:border-blue-300 hover:bg-blue-50/50 transition-all">
-                        <div className="flex flex-col items-center gap-2">
-                          <div className="bg-gray-100 p-3 rounded-xl">
-                            <Camera className="w-5 h-5 text-gray-400" />
-                          </div>
-                          <div>
-                            <p className="text-gray-600 text-sm font-medium">Click to add photo</p>
-                            <p className="text-gray-400 text-xs mt-0.5">JPG, PNG, WEBP up to 10MB</p>
-                          </div>
-                          <div className="flex items-center gap-1 text-blue-500 text-xs">
-                            <Upload className="w-3 h-3" />
-                            <span>Upload from device</span>
-                          </div>
-                        </div>
-                      </button>
-                    )}
-
-                    <input
-                      ref={photoInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePhotoSelect}
-                      className="hidden"
-                    />
-                  </div>
-
-                  {/* Submit Button */}
-                  <button
-                    onClick={handleSubmitIssue}
-                    disabled={submitting || !issueDescription.trim()}
-                    className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50">
-                    {submitting ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                        </svg>
-                        Submitting...
-                      </span>
-                    ) : "Submit Report →"}
-                  </button>
-                </div>
-              </>
-            )}
+            <button
+              onClick={handleReportIssue}
+              disabled={submitting}
+              style={{ width: "100%", background: submitting ? "#c7d2fe" : "linear-gradient(135deg,#6366f1,#8b5cf6)", color: "#fff", border: "none", borderRadius: "0.875rem", padding: "0.875rem", fontSize: "1rem", fontWeight: 700, cursor: submitting ? "not-allowed" : "pointer" }}
+            >
+              {submitting ? "Submitting..." : "Submit Report →"}
+            </button>
           </div>
         </div>
       )}
