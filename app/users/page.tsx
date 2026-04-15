@@ -47,21 +47,25 @@ export default function UsersPage() {
     finally { setLoading(false); }
   };
 
-  // In your Add User modal submit handler inside app/users/page.tsx
-const handleAddUser = async () => {
-  try {
-    await api.post("/api/users/add", {
-      full_name: newUser.full_name,
-      email: newUser.email,
-      password: newUser.password,
-      role_id: parseInt(newUser.role_id),
-    });
-    setShowModal(false);
-    fetchUsers(); // refresh the list
-  } catch (err: any) {
-    alert(err.response?.data?.detail || "Failed to add user");
-  }
-};
+  const handleAddUser = async () => {
+    setAddLoading(true);
+    setAddError("");
+    setAddSuccess("");
+    try {
+      const res = await fetch(`${API}/api/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: addForm.full_name,
+          email: addForm.email,
+          password: addForm.password,
+          role_id: addForm.role_id,
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAddError(data.detail || "Failed to add user");
+        return;
       }
       setAddSuccess("User created successfully!");
       setAddForm({ full_name: "", email: "", password: "", role_id: 2 });
