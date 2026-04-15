@@ -11,19 +11,31 @@ import {
 const COLORS = ["#6366f1", "#22d3ee", "#f59e0b", "#10b981", "#f43f5e"];
 
 export default function DashboardPage() {
-  const [data, setData] = useState<any>(null);
+  const [data, setData]       = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const role = typeof window !== "undefined" ? localStorage.getItem("role") : null;
+  const [error, setError]     = useState("");
+  // ✅ FIX: role must be state, not a plain variable.
+  // During Next.js SSR, window is undefined → plain variable always = null
+  // → wrong API endpoint called (or never called). Using useState + useEffect
+  // ensures localStorage is read only on the client after hydration.
+  const [role, setRole] = useState<string | null>(null);
 
+  // Step 1 — detect role client-side (localStorage unavailable during SSR)
   useEffect(() => {
+    const r = getRole();
+    setRole(r);
+  }, []);
+
+  // Step 2 — fetch dashboard data once the role is known
+  useEffect(() => {
+    if (!role) return;                      // wait until role is resolved
     const endpoint =
       role === "admin" ? "/api/dashboard/admin" : "/api/dashboard/employee";
     api
       .get(endpoint)
       .then((res) => setData(res.data))
       .catch((e: any) =>
-        setError(e?.response?.data?.detail || "Failed to load")
+        setError(e?.response?.data?.detail || "Failed to load dashboard data")
       )
       .finally(() => setLoading(false));
   }, [role]);

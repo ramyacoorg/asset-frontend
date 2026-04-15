@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getRole, logout, getToken } from "@/lib/auth";
+import { getRole, logout } from "@/lib/auth";
+import api from "@/lib/api";
 import {
   Monitor, LogOut, LayoutDashboard, Package,
   Users, GitBranch, FileText, Menu, X,
@@ -11,7 +12,9 @@ import {
 interface Issue {
   id: number;
   asset_id: number;
+  asset_name: string;
   employee_id: number;
+  employee_name: string;
   issue_description: string;
   issue_status: string;
   photo_url: string | null;
@@ -38,12 +41,9 @@ export default function IssuesPage() {
 
   const fetchIssues = async () => {
     try {
-      const token = getToken();
-      const res = await fetch("http://localhost:8000/api/issues/", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      setIssues(data);
+      // ✅ FIXED: was fetching from hardcoded localhost:8000 with wrong endpoint
+      const res = await api.get("/api/issues/all");
+      setIssues(res.data);
     } catch (err) {
       console.error("Failed to fetch issues", err);
     } finally {
@@ -184,9 +184,9 @@ export default function IssuesPage() {
 
                     {/* Meta info */}
                     <div className="flex items-center gap-4 text-xs text-gray-400">
-                      <span>Asset ID: {issue.asset_id}</span>
-                      <span>Employee ID: {issue.employee_id}</span>
-                      <span>Reported: {new Date(issue.reported_at).toLocaleDateString()}</span>
+                      <span>🖥️ {issue.asset_name || `Asset #${issue.asset_id}`}</span>
+                      <span>👤 {issue.employee_name || `Employee #${issue.employee_id}`}</span>
+                      <span>📅 {new Date(issue.reported_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
                     </div>
                   </div>
 
