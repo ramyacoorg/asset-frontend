@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getRole, logout, getToken } from "@/lib/auth";
-import { Monitor, LogOut, LayoutDashboard, Package, Users, GitBranch, FileText, Menu, X, Plus, Search, AlertTriangle, Trash2 } from "lucide-react";
+import api from "@/lib/api";
+import { getRole, logout } from "@/lib/auth";
+import { Monitor, LogOut, LayoutDashboard, Package, Users, GitBranch, FileText, Menu, X, Plus, Search, AlertTriangle, UserCheck, UserX, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface User {
   id: number;
@@ -12,7 +13,7 @@ interface User {
   created_at: string;
 }
 
-const API = "https://assettracker-production-e745.up.railway.app";
+
 
 export default function UsersPage() {
   const router = useRouter();
@@ -26,7 +27,12 @@ export default function UsersPage() {
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState("");
   const [addSuccess, setAddSuccess] = useState("");
+  const [togglingId, setTogglingId] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 6;
 
+  useEffect(() => { setCurrentPage(1); }, [search]);
+  
   useEffect(() => {
     const r = getRole();
     if (!r) router.push("/login");
@@ -36,13 +42,8 @@ export default function UsersPage() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch(`${API}/api/users/`, {
-        headers: { Authorization: `Bearer ${getToken()}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(Array.isArray(data) ? data : []);
-      }
+      const res = await api.get("/api/users/");
+      if (res.data) setUsers(Array.isArray(res.data) ? res.data : []);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
@@ -52,29 +53,34 @@ export default function UsersPage() {
     setAddError("");
     setAddSuccess("");
     try {
-      const res = await fetch(`${API}/api/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          full_name: addForm.full_name,
-          email: addForm.email,
-          password: addForm.password,
-          role_id: addForm.role_id,
-        })
+      await api.post("/api/auth/register", {
+        full_name: addForm.full_name,
+        email: addForm.email,
+        password: addForm.password,
+        role_id: addForm.role_id,
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setAddError(data.detail || "Failed to add user");
-        return;
-      }
       setAddSuccess("User created successfully!");
       setAddForm({ full_name: "", email: "", password: "", role_id: 2 });
       fetchUsers();
       setTimeout(() => { setShowAdd(false); setAddSuccess(""); }, 2000);
-    } catch (err) {
-      setAddError("Cannot connect to server!");
+    } catch (err: any) {
+      setAddError(err?.response?.data?.detail || "Failed to add user");
     } finally {
       setAddLoading(false);
+    }
+  };
+
+  const handleToggleActive = async (user: User) => {
+    setTogglingId(user.id);
+    try {
+      const res = await api.patch(`/api/users/${user.id}/toggle-active`);
+      setUsers(prev =>
+        prev.map(u => u.id === user.id ? { ...u, is_active: res.data.is_active } : u)
+      );
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || "Failed to update user status");
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -82,6 +88,9 @@ export default function UsersPage() {
     u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
     u.email?.toLowerCase().includes(search.toLowerCase())
   );
+  
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
+  const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const adminLinks = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
@@ -166,9 +175,9 @@ export default function UsersPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {filtered.length === 0 ? (
+            {paginated.length === 0 ? (
               <div className="col-span-3 text-center py-12 text-gray-500">No users found</div>
-            ) : filtered.map((user) => (
+            ) : paginated.map((user) => (
               <div key={user.id} className="rounded-2xl p-5 transition-all hover:scale-[1.02]"
                 style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(20px)" }}>
                 <div className="flex items-center gap-3 mb-4">
@@ -192,8 +201,56 @@ export default function UsersPage() {
                     <span className="text-gray-300 text-xs">{new Date(user.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
+
+                {/* Toggle Active Button */}
+                <button
+                  onClick={() => handleToggleActive(user)}
+                  disabled={togglingId === user.id}
+                  className={`mt-4 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-all disabled:opacity-50 ${
+                    user.is_active
+                      ? "bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20"
+                      : "bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20"
+                  }`}
+                >
+                  {togglingId === user.id ? (
+                    <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                  ) : user.is_active ? (
+                    <><UserX className="w-3 h-3" /> Deactivate</>
+                  ) : (
+                    <><UserCheck className="w-3 h-3" /> Activate</>
+                  )}
+                </button>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {!loading && filtered.length > ITEMS_PER_PAGE && (
+          <div className="flex items-center justify-between mt-8 px-4">
+            <p className="text-xs text-gray-400">
+              Showing <span className="font-semibold text-white">{((currentPage - 1) * ITEMS_PER_PAGE) + 1}</span> to <span className="font-semibold text-white">{Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)}</span> of <span className="font-semibold text-white">{filtered.length}</span> users
+            </p>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1}
+                className="p-2 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white disabled:opacity-30 transition-all border border-white/10">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <button key={i} onClick={() => setCurrentPage(i + 1)}
+                    className={`w-8 h-8 rounded-xl text-xs font-semibold transition-all ${
+                      currentPage === i + 1 ? "bg-blue-500/20 text-blue-400 border border-blue-500/20" : "text-gray-400 hover:text-white hover:bg-white/5"
+                    }`}>
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages}
+                className="p-2 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white disabled:opacity-30 transition-all border border-white/10">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
       </div>

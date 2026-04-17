@@ -1,14 +1,11 @@
-
 // next.config.ts
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   typescript: {
-    ignoreBuildErrors: true,   // ← add this line
+    ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,  // ← add this line
-  },
+  // Note: eslint config is handled via eslint.config.mjs, not next.config
 };
 
 export default nextConfig;

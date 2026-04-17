@@ -1,19 +1,45 @@
-
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import api from "@/lib/api";
+import { getRole, logout } from "@/lib/auth";
+import {
+  Monitor, LogOut, LayoutDashboard, Laptop, AlertTriangle,
+  Menu, X, Package2, CheckCircle
+} from "lucide-react";
 
-const RAILWAY = "https://assettracker-production-e745.up.railway.app";
+
+
+const employeeLinks = [
+  { icon: LayoutDashboard, label: "Dashboard",  href: "/dashboard" },
+  { icon: Laptop,          label: "My Gear",    href: "/my-gear", active: true },
+  { icon: AlertTriangle,   label: "My Tickets", href: "/my-tickets" },
+];
+
+const categoryIcon: any = {
+  Laptop: "💻", Mobile: "📱", Monitor: "🖥️", Tablet: "📟", Default: "📦",
+};
 
 export default function MyGearPage() {
-  const [assets, setAssets] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const [role, setRole]             = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [assets, setAssets]         = useState<any[]>([]);
+  const [loading, setLoading]       = useState(true);
   const [showIssueModal, setShowIssueModal] = useState(false);
-  const [selectedAsset, setSelectedAsset] = useState<any>(null);
-  const [issueForm, setIssueForm] = useState({ description: "", urgency: "Medium" });
-  const [photo, setPhoto] = useState<File | null>(null);
+  const [selectedAsset, setSelectedAsset]   = useState<any>(null);
+  const [issueForm, setIssueForm]   = useState({ description: "", urgency: "Medium" });
+  const [photo, setPhoto]           = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const r = getRole();
+    if (!r) { router.push("/login"); return; }
+    if (r === "admin") { router.push("/dashboard"); return; }
+    setRole(r);
+    fetchAssets();
+  }, [router]);
 
   const fetchAssets = () => {
     setLoading(true);
@@ -23,8 +49,6 @@ export default function MyGearPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchAssets(); }, []);
-
   const openIssueModal = (asset: any) => {
     setSelectedAsset(asset);
     setIssueForm({ description: "", urgency: "Medium" });
@@ -33,24 +57,16 @@ export default function MyGearPage() {
   };
 
   const handleReportIssue = async () => {
-    if (!issueForm.description.trim()) {
-      alert("Please describe the issue");
-      return;
-    }
+    if (!issueForm.description.trim()) { alert("Please describe the issue"); return; }
     setSubmitting(true);
     try {
-      const token = localStorage.getItem("token");
       const fd = new FormData();
       fd.append("asset_id", selectedAsset.asset_id.toString());
       fd.append("issue_description", `[${issueForm.urgency}] ${issueForm.description}`);
       if (photo) fd.append("photo", photo);
-
-      const res = await fetch(`${RAILWAY}/api/issues/report`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: fd,
+      await api.post("/api/issues/report", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
-      if (!res.ok) throw new Error("Failed");
       setShowIssueModal(false);
       alert("Issue reported successfully!");
     } catch {
@@ -60,126 +76,184 @@ export default function MyGearPage() {
     }
   };
 
-  const bg: React.CSSProperties = {
-    minHeight: "100vh",
-    background: "linear-gradient(135deg,#fdf4ff,#eff6ff,#f0fdf4)",
-    padding: "1.5rem",
-    fontFamily: "sans-serif",
-  };
-
-  const categoryIcon: any = {
-    Laptop: "💻", Mobile: "📱", Monitor: "🖥️", Tablet: "📟", Default: "📦",
-  };
+  if (!role) return null;
 
   return (
-    <div style={bg}>
-      <div style={{ marginBottom: "1.5rem" }}>
-        <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1e293b", margin: 0 }}>My Gear</h1>
-        <p style={{ color: "#64748b", fontSize: "0.85rem", margin: "4px 0 0" }}>Assets assigned to you</p>
+    <div
+      className="min-h-screen flex"
+      style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)" }}
+    >
+      {/* SIDEBAR */}
+      <div
+        className={`${sidebarOpen ? "w-64" : "w-16"} flex flex-col transition-all duration-500`}
+        style={{ background: "rgba(255,255,255,0.05)", backdropFilter: "blur(24px)", borderRight: "1px solid rgba(255,255,255,0.1)" }}
+      >
+        <div className="p-4 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          {sidebarOpen && (
+            <div className="flex items-center gap-2">
+              <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-xl">
+                <Monitor className="w-4 h-4 text-white" />
+              </div>
+              <span className="font-bold text-white text-sm">OptiAsset</span>
+            </div>
+          )}
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-gray-400 hover:text-white">
+            {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+          </button>
+        </div>
+
+        {sidebarOpen && (
+          <div className="px-4 py-3">
+            <div className="flex items-center gap-2 bg-blue-500/10 px-3 py-2 rounded-xl border border-blue-500/20">
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
+              <span className="text-xs font-semibold text-blue-300">👤 Employee</span>
+            </div>
+          </div>
+        )}
+
+        <nav className="flex-1 p-3 space-y-1">
+          {employeeLinks.map((link) => (
+            <button key={link.label} onClick={() => router.push(link.href)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm ${
+                link.active
+                  ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border border-blue-500/20"
+                  : "text-gray-400 hover:text-white hover:bg-white/10"
+              }`}>
+              <link.icon className="w-4 h-4 shrink-0" />
+              {sidebarOpen && <span>{link.label}</span>}
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-3" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 transition-all text-sm">
+            <LogOut className="w-4 h-4 shrink-0" />
+            {sidebarOpen && <span>Logout</span>}
+          </button>
+        </div>
       </div>
 
-      {loading ? (
-        <p style={{ color: "#94a3b8" }}>Loading your assets...</p>
-      ) : assets.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "3rem 0" }}>
-          <p style={{ fontSize: "2rem" }}>📭</p>
-          <p style={{ color: "#94a3b8" }}>No assets assigned to you yet.</p>
+      {/* MAIN */}
+      <div className="flex-1 p-8 overflow-auto">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white">My Gear 💻</h1>
+          <p className="text-gray-400 text-sm mt-1">Assets assigned to you</p>
         </div>
-      ) : (
-        assets.map(asset => (
-          <div key={asset.id} style={{ background: "#fff", borderRadius: "1.25rem", padding: "1.25rem", marginBottom: "1rem", boxShadow: "0 2px 16px rgba(0,0,0,0.07)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.875rem" }}>
-              <div style={{ width: 52, height: 52, borderRadius: "1rem", background: "linear-gradient(135deg,#ede9fe,#ddd6fe)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>
-                {categoryIcon[asset.asset_category] || categoryIcon.Default}
-              </div>
-              <div style={{ flex: 1 }}>
-                <p style={{ fontWeight: 700, color: "#1e293b", margin: 0, fontSize: "1rem" }}>{asset.asset_name}</p>
-                <p style={{ color: "#64748b", fontSize: "0.78rem", margin: "2px 0 0" }}>
-                  {asset.asset_code} · {asset.asset_category}
-                </p>
-              </div>
-              <span style={{ fontSize: "0.72rem", padding: "3px 10px", borderRadius: 999, background: "#dcfce7", color: "#16a34a", fontWeight: 600 }}>
-                Active
-              </span>
-            </div>
 
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "#f8fafc", borderRadius: "0.75rem", marginBottom: "0.875rem" }}>
-              <div style={{ textAlign: "center" }}>
-                <p style={{ color: "#94a3b8", fontSize: "0.68rem", margin: 0, textTransform: "uppercase" }}>Assigned</p>
-                <p style={{ color: "#1e293b", fontWeight: 600, fontSize: "0.85rem", margin: "2px 0 0" }}>
-                  {new Date(asset.assigned_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                </p>
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <p style={{ color: "#94a3b8", fontSize: "0.68rem", margin: 0, textTransform: "uppercase" }}>Status</p>
-                <p style={{ color: "#16a34a", fontWeight: 600, fontSize: "0.85rem", margin: "2px 0 0" }}>In Use</p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => openIssueModal(asset)}
-              style={{ width: "100%", background: "linear-gradient(135deg,#6366f1,#8b5cf6)", color: "#fff", border: "none", borderRadius: "0.875rem", padding: "0.75rem", cursor: "pointer", fontWeight: 600, fontSize: "0.9rem" }}
-            >
-              🔧 Report Issue
-            </button>
+        {loading ? (
+          <div className="text-center py-20">
+            <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4" />
+            <p className="text-gray-400">Loading your assets...</p>
           </div>
-        ))
-      )}
+        ) : assets.length === 0 ? (
+          <div className="text-center py-20 rounded-2xl"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+            <Package2 className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+            <p className="text-white font-semibold">No assets assigned yet</p>
+            <p className="text-gray-400 text-sm mt-1">Your assigned devices will appear here.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            {assets.map((asset) => (
+              <div key={asset.id} className="rounded-2xl p-6 transition-all hover:scale-[1.01]"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(20px)" }}>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500/30 to-purple-500/30 flex items-center justify-center text-2xl shrink-0 border border-white/10">
+                    {categoryIcon[asset.asset_category] || categoryIcon.Default}
+                  </div>
+                  <div>
+                    <p className="text-white font-bold text-sm">{asset.asset_name}</p>
+                    <p className="text-gray-400 text-xs mt-0.5">{asset.asset_code} · {asset.asset_category}</p>
+                  </div>
+                  <span className="ml-auto text-xs px-2.5 py-1 rounded-full bg-green-500/20 text-green-400 font-semibold shrink-0">
+                    Active
+                  </span>
+                </div>
+
+                <div className="flex justify-between rounded-xl p-3 mb-4"
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div className="text-center">
+                    <p className="text-gray-500 text-xs uppercase mb-1">Assigned</p>
+                    <p className="text-white font-semibold text-xs">
+                      {new Date(asset.assigned_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-gray-500 text-xs uppercase mb-1">Status</p>
+                    <p className="text-green-400 font-semibold text-xs">In Use</p>
+                  </div>
+                </div>
+
+                <button onClick={() => openIssueModal(asset)}
+                  className="w-full py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-all">
+                  🔧 Report Issue
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Report Issue Modal */}
       {showIssueModal && selectedAsset && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 50 }}>
-          <div style={{ background: "#fff", borderRadius: "1.5rem 1.5rem 0 0", padding: "1.75rem", width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}>
+          <div className="w-full max-w-md rounded-2xl p-6"
+            style={{ background: "rgba(15,23,42,0.98)", border: "1px solid rgba(255,255,255,0.12)" }}>
+            <div className="flex items-center justify-between mb-5">
               <div>
-                <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#1e293b", margin: 0 }}>Report an Issue 🔧</h2>
-                <p style={{ color: "#64748b", fontSize: "0.8rem", margin: "2px 0 0" }}>{selectedAsset.asset_name}</p>
+                <h2 className="text-white font-bold text-lg">Report an Issue 🔧</h2>
+                <p className="text-gray-400 text-xs mt-0.5">{selectedAsset.asset_name}</p>
               </div>
-              <button onClick={() => setShowIssueModal(false)} style={{ background: "#f1f5f9", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", fontSize: "1.1rem" }}>×</button>
+              <button onClick={() => setShowIssueModal(false)} className="text-gray-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#374151", display: "block", marginBottom: 6 }}>Description *</label>
-            <textarea
-              value={issueForm.description}
-              onChange={e => setIssueForm({ ...issueForm, description: e.target.value })}
-              placeholder="Describe the problem in detail..."
-              rows={3}
-              style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: "0.75rem", padding: "0.65rem 0.875rem", marginBottom: "1rem", fontSize: "0.9rem", resize: "vertical", background: "#f8fafc", boxSizing: "border-box" }}
-            />
+            <div className="space-y-4">
+              <div>
+                <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">Description *</label>
+                <textarea
+                  value={issueForm.description}
+                  onChange={e => setIssueForm({ ...issueForm, description: e.target.value })}
+                  placeholder="Describe the problem in detail..."
+                  rows={3}
+                  className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-blue-500 resize-none placeholder:text-gray-600"
+                />
+              </div>
 
-            <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#374151", display: "block", marginBottom: 8 }}>Urgency</label>
-            <div style={{ display: "flex", gap: 8, marginBottom: "1rem" }}>
-              {["Low", "Medium", "High"].map(u => (
-                <button
-                  key={u}
-                  onClick={() => setIssueForm({ ...issueForm, urgency: u })}
-                  style={{
-                    flex: 1, padding: "0.5rem", borderRadius: "0.75rem", cursor: "pointer", fontSize: "0.875rem", fontWeight: 600,
-                    background: issueForm.urgency === u ? (u === "High" ? "#fee2e2" : u === "Medium" ? "#fef3c7" : "#d1fae5") : "#f1f5f9",
-                    color: issueForm.urgency === u ? (u === "High" ? "#dc2626" : u === "Medium" ? "#d97706" : "#059669") : "#94a3b8",
-                    border: issueForm.urgency === u ? `2px solid ${u === "High" ? "#fca5a5" : u === "Medium" ? "#fcd34d" : "#6ee7b7"}` : "2px solid transparent",
-                  }}
-                >{u}</button>
-              ))}
+              <div>
+                <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">Urgency</label>
+                <div className="flex gap-2">
+                  {["Low", "Medium", "High"].map(u => (
+                    <button key={u} onClick={() => setIssueForm({ ...issueForm, urgency: u })}
+                      className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all border ${
+                        issueForm.urgency === u
+                          ? u === "High"   ? "bg-red-500/20 border-red-500/40 text-red-300"
+                          : u === "Medium" ? "bg-amber-500/20 border-amber-500/40 text-amber-300"
+                          :                 "bg-green-500/20 border-green-500/40 text-green-300"
+                          : "bg-white/5 border-white/10 text-gray-500"
+                      }`}>
+                      {u}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">
+                  Photo <span className="text-gray-600 normal-case">(optional)</span>
+                </label>
+                <input type="file" accept="image/*"
+                  onChange={e => setPhoto(e.target.files?.[0] || null)}
+                  className="w-full text-gray-400 text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-white/10 file:text-white file:text-xs file:font-semibold" />
+              </div>
+
+              <button onClick={handleReportIssue} disabled={submitting}
+                className="w-full py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-xl disabled:opacity-50 transition-all text-sm">
+                {submitting ? "Submitting..." : "Submit Report →"}
+              </button>
             </div>
-
-            <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#374151", display: "block", marginBottom: 6 }}>
-              Photo <span style={{ color: "#94a3b8", fontWeight: 400 }}>(optional)</span>
-            </label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={e => setPhoto(e.target.files?.[0] || null)}
-              style={{ width: "100%", marginBottom: "1.5rem", fontSize: "0.85rem" }}
-            />
-
-            <button
-              onClick={handleReportIssue}
-              disabled={submitting}
-              style={{ width: "100%", background: submitting ? "#c7d2fe" : "linear-gradient(135deg,#6366f1,#8b5cf6)", color: "#fff", border: "none", borderRadius: "0.875rem", padding: "0.875rem", fontSize: "1rem", fontWeight: 700, cursor: submitting ? "not-allowed" : "pointer" }}
-            >
-              {submitting ? "Submitting..." : "Submit Report →"}
-            </button>
           </div>
         </div>
       )}

@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import api from "@/lib/api";
+import { saveAuth } from "@/lib/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,7 +20,7 @@ export default function LoginPage() {
   const [suLoading, setSuLoading] = useState(false);
   const [suSuccess, setSuSuccess] = useState("");
 
-  const API = "https://assettracker-production-e745.up.railway.app";
+
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
@@ -36,21 +38,11 @@ export default function LoginPage() {
     }
 
     try {
-      const response = await fetch(`${API}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: emailVal, password: passVal }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setSiError(data.detail || "Invalid email or password.");
-        return;
-      }
-      localStorage.setItem("token", data.access_token);
-      localStorage.setItem("role", data.role);
-      window.location.href = "/dashboard";
-    } catch (err) {
-      setSiError("Cannot connect to server. Please try again.");
+      const res = await api.post("/api/auth/login", { email: emailVal, password: passVal });
+      saveAuth(res.data.access_token, res.data.role);
+      router.push("/dashboard");
+    } catch (err: any) {
+      setSiError(err?.response?.data?.detail || "Invalid email or password.");
     } finally {
       setSiLoading(false);
     }
@@ -67,25 +59,16 @@ export default function LoginPage() {
     const passVal = (form.elements.namedItem("supassword") as HTMLInputElement)?.value;
 
     try {
-      const response = await fetch(`${API}/api/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          full_name: `${suFirst} ${suLast}`.trim(),
-          email: emailVal || suEmail.trim(),
-          password: passVal || suPass,
-          role_id: suRole === "admin" ? 1 : 2,
-        }),
+      await api.post("/api/auth/register", {
+        full_name: `${suFirst} ${suLast}`.trim(),
+        email: emailVal || suEmail.trim(),
+        password: passVal || suPass,
+        role_id: suRole === "admin" ? 1 : 2,
       });
-      const data = await response.json();
-      if (!response.ok) {
-        setSuError(data.detail || "Registration failed. Try again.");
-        return;
-      }
       setSuSuccess("Account created! You can now sign in.");
       setTab("signin");
-    } catch (err) {
-      setSuError("Cannot connect to server. Please try again.");
+    } catch (err: any) {
+      setSuError(err?.response?.data?.detail || "Registration failed. Try again.");
     } finally {
       setSuLoading(false);
     }
@@ -267,7 +250,7 @@ export default function LoginPage() {
                     </button>
                   </div>
                 </div>
-                <div className="lp-forgot"><a href="#">Forgot password?</a></div>
+                <div className="lp-forgot"><a href="#" onClick={(e) => { e.preventDefault(); alert("Please contact your IT administrator to reset your password."); }}>Forgot password?</a></div>
                 <button className="lp-btn" type="submit" disabled={siLoading}>
                   {siLoading ? "Signing in…" : "Sign In to Dashboard"}
                 </button>

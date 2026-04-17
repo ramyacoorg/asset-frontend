@@ -6,7 +6,7 @@ import api from "@/lib/api";
 import {
   Monitor, LogOut, LayoutDashboard, Package,
   Users, GitBranch, FileText, Menu, X,
-  AlertTriangle, CheckCircle, Clock, Image
+  AlertTriangle, CheckCircle, Clock, Image, RefreshCw
 } from "lucide-react";
 
 interface Issue {
@@ -28,6 +28,7 @@ export default function IssuesPage() {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
 
   useEffect(() => {
     const r = getRole();
@@ -41,13 +42,28 @@ export default function IssuesPage() {
 
   const fetchIssues = async () => {
     try {
-      // ✅ FIXED: was fetching from hardcoded localhost:8000 with wrong endpoint
       const res = await api.get("/api/issues/all");
       setIssues(res.data);
     } catch (err) {
       console.error("Failed to fetch issues", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleStatus = async (issue: Issue) => {
+    const newStatus = issue.issue_status === "open" ? "resolved" : "open";
+    setUpdatingId(issue.id);
+    try {
+      await api.patch(`/api/issues/${issue.id}/status`, { status: newStatus });
+      setIssues(prev =>
+        prev.map(i => i.id === issue.id ? { ...i, issue_status: newStatus } : i)
+      );
+    } catch (err) {
+      console.error("Failed to update issue status", err);
+      alert("Failed to update status");
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -188,8 +204,9 @@ export default function IssuesPage() {
                     </div>
                   </div>
 
-                  {/* Photo */}
-                  <div className="shrink-0">
+                  {/* Photo + Action column */}
+                  <div className="shrink-0 flex flex-col items-end gap-3">
+                    {/* Photo thumbnail */}
                     {issue.photo_url ? (
                       <button onClick={() => setSelectedPhoto(issue.photo_url)}
                         className="relative group">
@@ -207,6 +224,25 @@ export default function IssuesPage() {
                         <Image className="w-5 h-5 text-gray-600" />
                       </div>
                     )}
+
+                    {/* Resolve / Reopen button */}
+                    <button
+                      onClick={() => handleToggleStatus(issue)}
+                      disabled={updatingId === issue.id}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all disabled:opacity-50 ${
+                        issue.issue_status === "resolved"
+                          ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
+                          : "bg-green-500/20 text-green-400 hover:bg-green-500/30"
+                      }`}
+                    >
+                      {updatingId === issue.id ? (
+                        <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                      ) : issue.issue_status === "resolved" ? (
+                        <><RefreshCw className="w-3 h-3" /> Reopen</>
+                      ) : (
+                        <><CheckCircle className="w-3 h-3" /> Resolve</>
+                      )}
+                    </button>
                   </div>
                 </div>
               </div>

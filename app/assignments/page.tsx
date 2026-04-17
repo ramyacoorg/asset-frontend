@@ -1,19 +1,44 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import api from "@/lib/api";
+import { getRole, logout } from "@/lib/auth";
+  Monitor, LogOut, LayoutDashboard, Package, Users, GitBranch,
+  FileText, Menu, X, AlertTriangle, Plus, CheckCircle, RotateCcw, ChevronLeft, ChevronRight
+} from "lucide-react";
 
-const RAILWAY = "https://assettracker-production-e745.up.railway.app";
+const adminLinks = [
+  { icon: LayoutDashboard, label: "Dashboard",   href: "/dashboard" },
+  { icon: Package,         label: "Inventory",   href: "/inventory" },
+  { icon: Users,           label: "All Users",   href: "/users" },
+  { icon: GitBranch,       label: "Assignments", href: "/assignments", active: true },
+  { icon: AlertTriangle,   label: "Issues",      href: "/issues" },
+  { icon: FileText,        label: "Reports",     href: "/reports" },
+];
 
 export default function AssignmentsPage() {
+  const router = useRouter();
+  const [role, setRole]               = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [availableAssets, setAvailableAssets] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ asset_id: "", employee_id: "" });
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  const [users, setUsers]             = useState<any[]>([]);
+  const [showModal, setShowModal]     = useState(false);
+  const [form, setForm]               = useState({ asset_id: "", employee_id: "" });
+  const [loading, setLoading]         = useState(true);
+  const [submitting, setSubmitting]   = useState(false);
+  const [error, setError]             = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 8;
+
+  useEffect(() => {
+    const r = getRole();
+    if (!r) { router.push("/login"); return; }
+    if (r !== "admin") { router.push("/dashboard"); return; }
+    setRole(r);
+    fetchAll();
+  }, [router]);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -33,13 +58,8 @@ export default function AssignmentsPage() {
     }
   };
 
-  useEffect(() => { fetchAll(); }, []);
-
   const handleAssign = async () => {
-    if (!form.asset_id || !form.employee_id) {
-      alert("Select both asset and employee");
-      return;
-    }
+    if (!form.asset_id || !form.employee_id) { alert("Select both asset and employee"); return; }
     setSubmitting(true);
     try {
       await api.post("/api/assignments/assign", {
@@ -66,135 +86,236 @@ export default function AssignmentsPage() {
     }
   };
 
-  const bg: React.CSSProperties = {
-    minHeight: "100vh",
-    background: "linear-gradient(135deg,#1e1b4b,#0f172a)",
-    padding: "1.5rem",
-    fontFamily: "sans-serif",
-  };
-
-  const glass: React.CSSProperties = {
-    background: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: "1rem",
-    padding: "1rem 1.25rem",
-  };
+  if (!role) return null;
 
   return (
-    <div style={bg}>
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-        <div>
-          <h1 style={{ color: "#e0e7ff", fontSize: "1.5rem", fontWeight: 700, margin: 0 }}>Assignments</h1>
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.85rem", margin: "4px 0 0" }}>Track asset assignments</p>
+    <div
+      className="min-h-screen flex"
+      style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)" }}
+    >
+      {/* SIDEBAR */}
+      <div
+        className={`${sidebarOpen ? "w-64" : "w-16"} flex flex-col transition-all duration-500`}
+        style={{ background: "rgba(255,255,255,0.05)", backdropFilter: "blur(24px)", borderRight: "1px solid rgba(255,255,255,0.1)" }}
+      >
+        <div className="p-4 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          {sidebarOpen && (
+            <div className="flex items-center gap-2">
+              <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-xl">
+                <Monitor className="w-4 h-4 text-white" />
+              </div>
+              <span className="font-bold text-white text-sm">OptiAsset</span>
+            </div>
+          )}
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-gray-400 hover:text-white">
+            {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+          </button>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)", color: "#fff", border: "none", borderRadius: "0.75rem", padding: "0.6rem 1.2rem", cursor: "pointer", fontWeight: 600, fontSize: "0.9rem" }}
-        >
-          + Assign Asset
-        </button>
-      </div>
 
-      {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "0.75rem", marginBottom: "1.25rem" }}>
-        {[
-          { label: "Total",    value: assignments.length,                                    color: "#6366f1" },
-          { label: "Active",   value: assignments.filter(a => a.status === "active").length,   color: "#10b981" },
-          { label: "Returned", value: assignments.filter(a => a.status === "returned").length, color: "#f59e0b" },
-        ].map(s => (
-          <div key={s.label} style={{ ...glass, textAlign: "center" }}>
-            <div style={{ fontSize: "1.6rem", fontWeight: 700, color: s.color }}>{s.value}</div>
-            <div style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.4)", marginTop: 4 }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* List */}
-      {loading ? (
-        <p style={{ color: "rgba(255,255,255,0.4)" }}>Loading...</p>
-      ) : error ? (
-        <p style={{ color: "#f87171" }}>{error}</p>
-      ) : assignments.length === 0 ? (
-        <p style={{ color: "rgba(255,255,255,0.3)", textAlign: "center", marginTop: "2rem" }}>No assignments yet.</p>
-      ) : (
-        assignments.map(a => (
-          <div key={a.id} style={{ ...glass, display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.75rem" }}>
-            <div style={{ width: 42, height: 42, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: "1rem", flexShrink: 0 }}>
-              {a.employee_name?.[0]?.toUpperCase() || "?"}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ color: "#e2e8f0", fontWeight: 600, margin: 0, fontSize: "0.9rem" }}>{a.employee_name}</p>
-              <p style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.78rem", margin: "2px 0 0" }}>
-                {a.asset_name} · <span style={{ color: "#22d3ee" }}>{a.asset_code}</span>
-              </p>
-            </div>
-            <div style={{ textAlign: "right", flexShrink: 0 }}>
-              <span style={{
-                fontSize: "0.7rem", padding: "3px 10px", borderRadius: 999, fontWeight: 600,
-                background: a.status === "active" ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)",
-                color: a.status === "active" ? "#34d399" : "#fbbf24",
-              }}>{a.status}</span>
-              <p style={{ color: "rgba(255,255,255,0.25)", fontSize: "0.68rem", margin: "4px 0 2px" }}>
-                {a.return_date ? `Returned: ${a.return_date}` : `Assigned: ${a.assigned_date}`}
-              </p>
-              {a.status === "active" && (
-                <button
-                  onClick={() => handleReturn(a.id)}
-                  style={{ background: "rgba(245,158,11,0.12)", color: "#fbbf24", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "0.5rem", padding: "3px 10px", cursor: "pointer", fontSize: "0.72rem", fontWeight: 600 }}
-                >
-                  Return
-                </button>
-              )}
+        {sidebarOpen && (
+          <div className="px-4 py-3">
+            <div className="flex items-center gap-2 bg-blue-500/10 px-3 py-2 rounded-xl border border-blue-500/20">
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
+              <span className="text-xs font-semibold text-blue-300">👑 Administrator</span>
             </div>
           </div>
-        ))
-      )}
+        )}
+
+        <nav className="flex-1 p-3 space-y-1">
+          {adminLinks.map((link) => (
+            <button key={link.label} onClick={() => router.push(link.href)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm ${
+                link.active
+                  ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border border-blue-500/20"
+                  : "text-gray-400 hover:text-white hover:bg-white/10"
+              }`}>
+              <link.icon className="w-4 h-4 shrink-0" />
+              {sidebarOpen && <span>{link.label}</span>}
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-3" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 transition-all text-sm">
+            <LogOut className="w-4 h-4 shrink-0" />
+            {sidebarOpen && <span>Logout</span>}
+          </button>
+        </div>
+      </div>
+
+      {/* MAIN */}
+      <div className="flex-1 p-8 overflow-auto">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-white">Assignments 🔗</h1>
+            <p className="text-gray-400 text-sm mt-1">Track asset assignments across employees</p>
+          </div>
+          <button onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-lg hover:shadow-xl transition-all">
+            <Plus className="w-4 h-4" /> Assign Asset
+          </button>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          {[
+            { label: "Total",    value: assignments.length,                                    icon: GitBranch,  color: "from-indigo-400 to-purple-500" },
+            { label: "Active",   value: assignments.filter(a => a.status === "active").length,   icon: CheckCircle,color: "from-emerald-400 to-green-500" },
+            { label: "Returned", value: assignments.filter(a => a.status === "returned").length, icon: RotateCcw,  color: "from-amber-400 to-orange-500" },
+          ].map(s => (
+            <div key={s.label} className="rounded-2xl p-5 flex items-center gap-4 transition-all hover:scale-[1.02]"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(20px)" }}>
+              <div className={`bg-gradient-to-br ${s.color} p-3 rounded-xl shadow-lg`}>
+                <s.icon className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">{s.value}</p>
+                <p className="text-gray-400 text-xs mt-0.5">{s.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* List */}
+        {loading ? (
+          <div className="text-center py-20">
+            <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4" />
+            <p className="text-gray-400">Loading assignments...</p>
+          </div>
+        ) : error ? (
+          <p className="text-red-400">{error}</p>
+        ) : assignments.length === 0 ? (
+          <div className="text-center py-20 rounded-2xl"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+            <GitBranch className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+            <p className="text-white font-semibold">No assignments yet</p>
+            <p className="text-gray-400 text-sm mt-1">Assign an asset to get started.</p>
+          </div>
+        ) : (
+          <div className="rounded-2xl overflow-hidden"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/10 text-gray-400">
+                  <th className="text-left px-6 py-4">Employee</th>
+                  <th className="text-left px-6 py-4">Asset</th>
+                  <th className="text-left px-6 py-4">Date</th>
+                  <th className="text-left px-6 py-4">Status</th>
+                  <th className="text-left px-6 py-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {paginated.map(a => (
+                  <tr key={a.id} className="hover:bg-white/5 transition-all">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
+                          {a.employee_name?.[0]?.toUpperCase() || "?"}
+                        </div>
+                        <span className="text-white font-medium">{a.employee_name}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-white font-medium">{a.asset_name}</p>
+                      <p className="text-cyan-400 font-mono text-xs mt-0.5">{a.asset_code}</p>
+                    </td>
+                    <td className="px-6 py-4 text-gray-400 text-xs">
+                      {a.return_date ? `Returned: ${new Date(a.return_date).toLocaleDateString()}` : `Since: ${new Date(a.assigned_date).toLocaleDateString()}`}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        a.status === "active"
+                          ? "bg-green-500/20 text-green-400"
+                          : "bg-amber-500/20 text-amber-400"
+                      }`}>{a.status}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {a.status === "active" && (
+                        <button onClick={() => handleReturn(a.id)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-lg hover:bg-amber-500/30 transition-all text-xs font-semibold">
+                          <RotateCcw className="w-3 h-3" /> Return
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {!loading && assignments.length > ITEMS_PER_PAGE && (
+          <div className="flex items-center justify-between mt-6 px-4">
+            <p className="text-xs text-gray-400">
+              Showing <span className="font-semibold text-white">{((currentPage - 1) * ITEMS_PER_PAGE) + 1}</span> to <span className="font-semibold text-white">{Math.min(currentPage * ITEMS_PER_PAGE, assignments.length)}</span> of <span className="font-semibold text-white">{assignments.length}</span> assignments
+            </p>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1}
+                className="p-2 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white disabled:opacity-30 transition-all border border-white/10">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <button key={i} onClick={() => setCurrentPage(i + 1)}
+                    className={`w-8 h-8 rounded-xl text-xs font-semibold transition-all ${
+                      currentPage === i + 1 ? "bg-blue-500/20 text-blue-400 border border-blue-500/20" : "text-gray-400 hover:text-white hover:bg-white/5"
+                    }`}>
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages}
+                className="p-2 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white disabled:opacity-30 transition-all border border-white/10">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Assign Modal */}
       {showModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: "1rem" }}>
-          <div style={{ background: "#1e293b", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "1.25rem", padding: "1.75rem", width: "100%", maxWidth: 420 }}>
-            <h2 style={{ color: "#e0e7ff", fontSize: "1.1rem", fontWeight: 700, margin: "0 0 1.25rem" }}>Assign Asset</h2>
-
-            <label style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.78rem", display: "block", marginBottom: 6 }}>Available Asset</label>
-            <select
-              value={form.asset_id}
-              onChange={e => setForm({ ...form, asset_id: e.target.value })}
-              style={{ width: "100%", background: "#0f172a", color: "#e2e8f0", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "0.75rem", padding: "0.65rem 0.875rem", marginBottom: "1rem", fontSize: "0.9rem" }}
-            >
-              <option value="">-- Select Asset --</option>
-              {availableAssets.map(a => (
-                <option key={a.id} value={a.id}>{a.asset_name} ({a.asset_code})</option>
-              ))}
-            </select>
-
-            <label style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.78rem", display: "block", marginBottom: 6 }}>Employee</label>
-            <select
-              value={form.employee_id}
-              onChange={e => setForm({ ...form, employee_id: e.target.value })}
-              style={{ width: "100%", background: "#0f172a", color: "#e2e8f0", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "0.75rem", padding: "0.65rem 0.875rem", marginBottom: "1.5rem", fontSize: "0.9rem" }}
-            >
-              <option value="">-- Select Employee --</option>
-              {users.map(u => (
-                <option key={u.id} value={u.id}>{u.full_name} ({u.email})</option>
-              ))}
-            </select>
-
-            <div style={{ display: "flex", gap: "0.75rem" }}>
-              <button
-                onClick={() => { setShowModal(false); setForm({ asset_id: "", employee_id: "" }); }}
-                style={{ flex: 1, background: "rgba(255,255,255,0.06)", color: "#94a3b8", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.75rem", padding: "0.7rem", cursor: "pointer" }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAssign}
-                disabled={submitting}
-                style={{ flex: 1, background: submitting ? "rgba(99,102,241,0.4)" : "linear-gradient(135deg,#6366f1,#8b5cf6)", color: "#fff", border: "none", borderRadius: "0.75rem", padding: "0.7rem", cursor: submitting ? "not-allowed" : "pointer", fontWeight: 600 }}
-              >
-                {submitting ? "Assigning..." : "Assign"}
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}>
+          <div className="w-full max-w-md rounded-2xl p-6"
+            style={{ background: "rgba(15,23,42,0.95)", border: "1px solid rgba(255,255,255,0.1)" }}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-white font-bold text-lg">Assign Asset 🔗</h2>
+              <button onClick={() => { setShowModal(false); setForm({ asset_id: "", employee_id: "" }); }}
+                className="text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">Available Asset</label>
+                <select value={form.asset_id} onChange={e => setForm({ ...form, asset_id: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-blue-500">
+                  <option value="">-- Select Asset --</option>
+                  {availableAssets.map(a => (
+                    <option key={a.id} value={a.id}>{a.asset_name} ({a.asset_code})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">Employee</label>
+                <select value={form.employee_id} onChange={e => setForm({ ...form, employee_id: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-blue-500">
+                  <option value="">-- Select Employee --</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>{u.full_name} ({u.email})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => { setShowModal(false); setForm({ asset_id: "", employee_id: "" }); }}
+                  className="flex-1 py-3 bg-white/5 border border-white/10 text-gray-300 rounded-xl text-sm">
+                  Cancel
+                </button>
+                <button onClick={handleAssign} disabled={submitting}
+                  className="flex-1 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-xl text-sm disabled:opacity-50">
+                  {submitting ? "Assigning..." : "Assign"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

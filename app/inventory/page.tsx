@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getRole, logout, getToken } from "@/lib/auth";
-import { Monitor, LogOut, LayoutDashboard, Package, Users, GitBranch, FileText, Menu, X, Plus, Search, Pencil, Trash2, AlertTriangle } from "lucide-react";
+import api from "@/lib/api";
+import { getRole, logout } from "@/lib/auth";
+import { Monitor, LogOut, LayoutDashboard, Package, Users, GitBranch, FileText, Menu, X, Plus, Search, Pencil, Trash2, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Asset {
   id: number;
@@ -10,10 +11,11 @@ interface Asset {
   asset_name: string;
   asset_category: string;
   asset_status: string;
+  purchase_date?: string;
   created_at: string;
 }
 
-const API = "https://assettracker-production-e745.up.railway.app";
+
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -22,17 +24,21 @@ export default function InventoryPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 8;
+
+  useEffect(() => { setCurrentPage(1); }, [search]);
 
   // Add Modal
   const [showAdd, setShowAdd] = useState(false);
-  const [addForm, setAddForm] = useState({ asset_code: "", asset_name: "", asset_category: "Laptop", asset_status: "available" });
+  const [addForm, setAddForm] = useState({ asset_code: "", asset_name: "", asset_category: "Laptop", asset_status: "available", purchase_date: "" });
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState("");
 
   // Edit Modal
   const [showEdit, setShowEdit] = useState(false);
   const [editAsset, setEditAsset] = useState<Asset | null>(null);
-  const [editForm, setEditForm] = useState({ asset_name: "", asset_category: "", asset_status: "" });
+  const [editForm, setEditForm] = useState({ asset_name: "", asset_category: "", asset_status: "", purchase_date: "" });
   const [editLoading, setEditLoading] = useState(false);
 
   // Delete Modal
@@ -49,11 +55,8 @@ export default function InventoryPage() {
 
   const fetchAssets = async () => {
     try {
-      const res = await fetch(`${API}/api/assets/`, {
-        headers: { Authorization: `Bearer ${getToken()}` }
-      });
-      const data = await res.json();
-      setAssets(Array.isArray(data) ? data : []);
+      const res = await api.get("/api/assets/");
+      setAssets(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -65,21 +68,12 @@ export default function InventoryPage() {
     setAddLoading(true);
     setAddError("");
     try {
-      const res = await fetch(`${API}/api/assets/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify(addForm)
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        setAddError(err.detail || "Failed to add asset");
-        return;
-      }
+      await api.post("/api/assets/", addForm);
       setShowAdd(false);
-      setAddForm({ asset_code: "", asset_name: "", asset_category: "Laptop", asset_status: "available" });
+      setAddForm({ asset_code: "", asset_name: "", asset_category: "Laptop", asset_status: "available", purchase_date: "" });
       fetchAssets();
-    } catch (err) {
-      setAddError("Something went wrong!");
+    } catch (err: any) {
+      setAddError(err?.response?.data?.detail || "Failed to add asset");
     } finally {
       setAddLoading(false);
     }
@@ -89,11 +83,7 @@ export default function InventoryPage() {
     if (!editAsset) return;
     setEditLoading(true);
     try {
-      await fetch(`${API}/api/assets/${editAsset.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify(editForm)
-      });
+      await api.put(`/api/assets/${editAsset.id}`, editForm);
       setShowEdit(false);
       fetchAssets();
     } finally {
@@ -105,10 +95,7 @@ export default function InventoryPage() {
     if (!deleteAsset) return;
     setDeleteLoading(true);
     try {
-      await fetch(`${API}/api/assets/${deleteAsset.id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${getToken()}` }
-      });
+      await api.delete(`/api/assets/${deleteAsset.id}`);
       setShowDelete(false);
       fetchAssets();
     } finally {
@@ -120,6 +107,9 @@ export default function InventoryPage() {
     a.asset_name.toLowerCase().includes(search.toLowerCase()) ||
     a.asset_code.toLowerCase().includes(search.toLowerCase())
   );
+  
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
+  const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const adminLinks = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
@@ -211,13 +201,14 @@ export default function InventoryPage() {
                   <th className="text-left px-6 py-4">Name</th>
                   <th className="text-left px-6 py-4">Category</th>
                   <th className="text-left px-6 py-4">Status</th>
+                  <th className="text-left px-6 py-4">Purchase Date</th>
                   <th className="text-left px-6 py-4">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {filtered.length === 0 ? (
-                  <tr><td colSpan={5} className="text-center py-12 text-gray-500">No assets found</td></tr>
-                ) : filtered.map((asset) => (
+                {paginated.length === 0 ? (
+                  <tr><td colSpan={6} className="text-center py-12 text-gray-500">No assets found</td></tr>
+                ) : paginated.map((asset) => (
                   <tr key={asset.id} className="hover:bg-white/5 transition-all">
                     <td className="px-6 py-4 font-mono text-blue-400 text-xs">{asset.asset_code}</td>
                     <td className="px-6 py-4 font-medium text-white">{asset.asset_name}</td>
@@ -228,9 +219,12 @@ export default function InventoryPage() {
                         asset.asset_status === "available" ? "bg-blue-500/20 text-blue-400" :
                         "bg-orange-500/20 text-orange-400"}`}>{asset.asset_status}</span>
                     </td>
+                    <td className="px-6 py-4 text-gray-300 text-xs">
+                      {asset.purchase_date ? new Date(asset.purchase_date).toLocaleDateString() : "—"}
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <button onClick={() => { setEditAsset(asset); setEditForm({ asset_name: asset.asset_name, asset_category: asset.asset_category, asset_status: asset.asset_status }); setShowEdit(true); }}
+                        <button onClick={() => { setEditAsset(asset); setEditForm({ asset_name: asset.asset_name, asset_category: asset.asset_category, asset_status: asset.asset_status, purchase_date: asset.purchase_date ? new Date(asset.purchase_date).toISOString().split('T')[0] : "" }); setShowEdit(true); }}
                           className="p-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-all">
                           <Pencil className="w-3 h-3" />
                         </button>
@@ -244,6 +238,35 @@ export default function InventoryPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {!loading && filtered.length > ITEMS_PER_PAGE && (
+          <div className="flex items-center justify-between mt-6 px-4">
+            <p className="text-xs text-gray-400">
+              Showing <span className="font-semibold text-white">{((currentPage - 1) * ITEMS_PER_PAGE) + 1}</span> to <span className="font-semibold text-white">{Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)}</span> of <span className="font-semibold text-white">{filtered.length}</span> entries
+            </p>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1}
+                className="p-2 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white disabled:opacity-30 transition-all border border-white/10">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <button key={i} onClick={() => setCurrentPage(i + 1)}
+                    className={`w-8 h-8 rounded-xl text-xs font-semibold transition-all ${
+                      currentPage === i + 1 ? "bg-blue-500/20 text-blue-400 border border-blue-500/20" : "text-gray-400 hover:text-white hover:bg-white/5"
+                    }`}>
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages}
+                className="p-2 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white disabled:opacity-30 transition-all border border-white/10">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -289,6 +312,11 @@ export default function InventoryPage() {
                   <option value="retired">Retired</option>
                 </select>
               </div>
+              <div>
+                <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">Purchase Date</label>
+                <input type="date" value={addForm.purchase_date} onChange={(e) => setAddForm({...addForm, purchase_date: e.target.value})}
+                  className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-blue-500" />
+              </div>
               <button onClick={handleAdd} disabled={addLoading || !addForm.asset_code || !addForm.asset_name}
                 className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-xl disabled:opacity-50">
                 {addLoading ? "Adding..." : "Add Asset"}
@@ -332,6 +360,11 @@ export default function InventoryPage() {
                   <option value="under_repair">Under Repair</option>
                   <option value="retired">Retired</option>
                 </select>
+              </div>
+              <div>
+                <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">Purchase Date</label>
+                <input type="date" value={editForm.purchase_date} onChange={(e) => setEditForm({...editForm, purchase_date: e.target.value})}
+                  className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-blue-500" />
               </div>
               <button onClick={handleEdit} disabled={editLoading}
                 className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-xl disabled:opacity-50">

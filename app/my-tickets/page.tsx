@@ -1,18 +1,55 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import api from "@/lib/api";
+import { getRole, logout } from "@/lib/auth";
+import {
+  Monitor, LogOut, LayoutDashboard, Laptop, AlertTriangle,
+  Menu, X, Plus, CheckCircle, Clock, FileText
+} from "lucide-react";
 
-const RAILWAY = "https://assettracker-production-e745.up.railway.app";
+
+
+const employeeLinks = [
+  { icon: LayoutDashboard, label: "Dashboard",  href: "/dashboard" },
+  { icon: Laptop,          label: "My Gear",    href: "/my-gear" },
+  { icon: AlertTriangle,   label: "My Tickets", href: "/my-tickets", active: true },
+];
+
+const getUrgency = (desc: string) => {
+  if (desc?.startsWith("[High]"))   return "High";
+  if (desc?.startsWith("[Low]"))    return "Low";
+  return "Medium";
+};
+const cleanDesc = (desc: string) =>
+  desc?.replace(/^\[(High|Medium|Low)\]\s*/, "") ?? desc;
+
+const urgencyColor: any = {
+  High:   "bg-red-500/20 text-red-400",
+  Medium: "bg-amber-500/20 text-amber-400",
+  Low:    "bg-green-500/20 text-green-400",
+};
 
 export default function MyTicketsPage() {
-  const [issues, setIssues]     = useState<any[]>([]);
-  const [myAssets, setMyAssets] = useState<any[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ asset_id: "", description: "", urgency: "Medium" });
-  const [photo, setPhoto] = useState<File | null>(null);
+  const router = useRouter();
+  const [role, setRole]               = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [issues, setIssues]           = useState<any[]>([]);
+  const [myAssets, setMyAssets]       = useState<any[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [showModal, setShowModal]     = useState(false);
+  const [submitting, setSubmitting]   = useState(false);
+  const [form, setForm]               = useState({ asset_id: "", description: "", urgency: "Medium" });
+  const [photo, setPhoto]             = useState<File | null>(null);
+
+  useEffect(() => {
+    const r = getRole();
+    if (!r) { router.push("/login"); return; }
+    if (r === "admin") { router.push("/dashboard"); return; }
+    setRole(r);
+    fetchData();
+  }, [router]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -30,8 +67,6 @@ export default function MyTicketsPage() {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
-
   const handleSubmit = async () => {
     if (!form.asset_id || !form.description.trim()) {
       alert("Please select an asset and describe the issue");
@@ -39,19 +74,13 @@ export default function MyTicketsPage() {
     }
     setSubmitting(true);
     try {
-      const token = localStorage.getItem("token");
       const fd = new FormData();
       fd.append("asset_id", form.asset_id);
       fd.append("issue_description", `[${form.urgency}] ${form.description}`);
       if (photo) fd.append("photo", photo);
-
-      const res = await fetch(`${RAILWAY}/api/issues/report`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: fd,
+      await api.post("/api/issues/report", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
-      if (!res.ok) throw new Error("Failed");
-
       setShowModal(false);
       setForm({ asset_id: "", description: "", urgency: "Medium" });
       setPhoto(null);
@@ -63,158 +92,221 @@ export default function MyTicketsPage() {
     }
   };
 
-  const getUrgency = (desc: string) => {
-    if (desc?.startsWith("[High]"))   return "High";
-    if (desc?.startsWith("[Low]"))    return "Low";
-    return "Medium";
-  };
-  const cleanDesc = (desc: string) =>
-    desc?.replace(/^\[(High|Medium|Low)\]\s*/, "") ?? desc;
-
-  const statusStyle: any = {
-    open:        { bg: "rgba(244,63,94,0.12)",  color: "#f43f5e", label: "Open" },
-    in_progress: { bg: "rgba(245,158,11,0.12)", color: "#f59e0b", label: "In Progress" },
-    resolved:    { bg: "rgba(16,185,129,0.12)", color: "#10b981", label: "Resolved" },
-  };
-
-  const urgencyColor: any = {
-    High:   { bg: "#fee2e2", color: "#dc2626" },
-    Medium: { bg: "#fef3c7", color: "#d97706" },
-    Low:    { bg: "#d1fae5", color: "#059669" },
-  };
+  if (!role) return null;
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,#fdf4ff,#eff6ff,#f0fdf4)", padding: "1.5rem", fontFamily: "sans-serif" }}>
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem" }}>
-        <div>
-          <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1e293b", margin: 0 }}>My Tickets</h1>
-          <p style={{ color: "#64748b", fontSize: "0.85rem", margin: "4px 0 0" }}>Track your reported issues</p>
-        </div>
-        <button
-          onClick={() => setShowModal(true)}
-          style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)", color: "#fff", border: "none", borderRadius: "0.875rem", padding: "0.65rem 1.1rem", cursor: "pointer", fontWeight: 600, fontSize: "0.875rem" }}
-        >
-          + New Ticket
-        </button>
-      </div>
-
-      {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "0.75rem", marginBottom: "1.5rem" }}>
-        {[
-          { label: "Total",       value: issues.length,                                              icon: "📋", color: "#6366f1" },
-          { label: "In Progress", value: issues.filter(i => i.issue_status === "in_progress").length, icon: "🕐", color: "#f59e0b" },
-          { label: "Resolved",    value: issues.filter(i => i.issue_status === "resolved").length,    icon: "✅", color: "#10b981" },
-        ].map(s => (
-          <div key={s.label} style={{ background: "#fff", borderRadius: "1rem", padding: "1rem", boxShadow: "0 1px 12px rgba(0,0,0,0.06)", textAlign: "center" }}>
-            <div style={{ fontSize: "1.4rem" }}>{s.icon}</div>
-            <div style={{ fontSize: "1.5rem", fontWeight: 700, color: s.color }}>{s.value}</div>
-            <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginTop: 2 }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Tickets */}
-      {loading ? (
-        <p style={{ color: "#94a3b8" }}>Loading tickets...</p>
-      ) : issues.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "3rem 0" }}>
-          <p style={{ fontSize: "2rem" }}>🎉</p>
-          <p style={{ color: "#94a3b8" }}>No tickets yet!</p>
-        </div>
-      ) : (
-        issues.map(issue => {
-          const urgency = getUrgency(issue.issue_description);
-          const st      = statusStyle[issue.issue_status] ?? statusStyle.open;
-          const uc      = urgencyColor[urgency];
-          return (
-            <div key={issue.id} style={{ background: "#fff", borderRadius: "1rem", padding: "1.25rem", marginBottom: "0.875rem", boxShadow: "0 1px 12px rgba(0,0,0,0.06)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <span style={{ fontSize: "0.68rem", color: "#94a3b8", fontFamily: "monospace" }}>
-                    TK-{String(issue.id).padStart(3, "0")}
-                  </span>
-                  <span style={{ fontSize: "0.7rem", fontWeight: 600, color: uc.color, background: uc.bg, padding: "2px 8px", borderRadius: 999 }}>
-                    {urgency}
-                  </span>
-                </div>
-                <span style={{ fontSize: "0.7rem", fontWeight: 600, color: st.color, background: st.bg, padding: "3px 10px", borderRadius: 999 }}>
-                  {st.label}
-                </span>
+    <div
+      className="min-h-screen flex"
+      style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)" }}
+    >
+      {/* SIDEBAR */}
+      <div
+        className={`${sidebarOpen ? "w-64" : "w-16"} flex flex-col transition-all duration-500`}
+        style={{ background: "rgba(255,255,255,0.05)", backdropFilter: "blur(24px)", borderRight: "1px solid rgba(255,255,255,0.1)" }}
+      >
+        <div className="p-4 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          {sidebarOpen && (
+            <div className="flex items-center gap-2">
+              <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-xl">
+                <Monitor className="w-4 h-4 text-white" />
               </div>
-              <p style={{ fontWeight: 600, color: "#1e293b", margin: "0 0 4px", fontSize: "0.95rem" }}>
-                {cleanDesc(issue.issue_description)}
-              </p>
-              <p style={{ color: "#64748b", fontSize: "0.78rem", margin: 0 }}>
-                {issue.asset_name} · {new Date(issue.reported_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-              </p>
-              {issue.photo_url && (
-                <img src={issue.photo_url} alt="issue" style={{ marginTop: 10, borderRadius: "0.5rem", maxHeight: 140, objectFit: "cover", width: "100%" }} />
-              )}
+              <span className="font-bold text-white text-sm">OptiAsset</span>
             </div>
-          );
-        })
-      )}
+          )}
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-gray-400 hover:text-white">
+            {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+          </button>
+        </div>
+
+        {sidebarOpen && (
+          <div className="px-4 py-3">
+            <div className="flex items-center gap-2 bg-blue-500/10 px-3 py-2 rounded-xl border border-blue-500/20">
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
+              <span className="text-xs font-semibold text-blue-300">👤 Employee</span>
+            </div>
+          </div>
+        )}
+
+        <nav className="flex-1 p-3 space-y-1">
+          {employeeLinks.map((link) => (
+            <button key={link.label} onClick={() => router.push(link.href)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm ${
+                link.active
+                  ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border border-blue-500/20"
+                  : "text-gray-400 hover:text-white hover:bg-white/10"
+              }`}>
+              <link.icon className="w-4 h-4 shrink-0" />
+              {sidebarOpen && <span>{link.label}</span>}
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-3" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 transition-all text-sm">
+            <LogOut className="w-4 h-4 shrink-0" />
+            {sidebarOpen && <span>Logout</span>}
+          </button>
+        </div>
+      </div>
+
+      {/* MAIN */}
+      <div className="flex-1 p-8 overflow-auto">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-white">My Tickets 🎫</h1>
+            <p className="text-gray-400 text-sm mt-1">Track your reported issues</p>
+          </div>
+          <button onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-lg hover:shadow-xl transition-all">
+            <Plus className="w-4 h-4" /> New Ticket
+          </button>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          {[
+            { label: "Total",       value: issues.length,                                              icon: FileText,    color: "from-indigo-400 to-purple-500" },
+            { label: "In Progress", value: issues.filter(i => i.issue_status === "in_progress").length, icon: Clock,       color: "from-amber-400 to-orange-500" },
+            { label: "Resolved",    value: issues.filter(i => i.issue_status === "resolved").length,    icon: CheckCircle, color: "from-emerald-400 to-green-500" },
+          ].map(s => (
+            <div key={s.label} className="rounded-2xl p-5 flex items-center gap-4 transition-all hover:scale-[1.02]"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(20px)" }}>
+              <div className={`bg-gradient-to-br ${s.color} p-3 rounded-xl shadow-lg`}>
+                <s.icon className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">{s.value}</p>
+                <p className="text-gray-400 text-xs mt-0.5">{s.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Ticket List */}
+        {loading ? (
+          <div className="text-center py-20">
+            <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4" />
+            <p className="text-gray-400">Loading tickets...</p>
+          </div>
+        ) : issues.length === 0 ? (
+          <div className="text-center py-20 rounded-2xl"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+            <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-4" />
+            <p className="text-white font-semibold">No tickets yet!</p>
+            <p className="text-gray-400 text-sm mt-1">All good — raise a ticket if you have an issue.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {issues.map((issue) => {
+              const urgency = getUrgency(issue.issue_description);
+              return (
+                <div key={issue.id} className="rounded-2xl p-5 transition-all hover:scale-[1.005]"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(20px)" }}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-blue-400 text-xs font-mono">
+                          TK-{String(issue.id).padStart(3, "0")}
+                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${urgencyColor[urgency]}`}>
+                          {urgency}
+                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ml-auto ${
+                          issue.issue_status === "open"
+                            ? "bg-red-500/20 text-red-400"
+                            : issue.issue_status === "in_progress"
+                            ? "bg-amber-500/20 text-amber-400"
+                            : "bg-green-500/20 text-green-400"
+                        }`}>{issue.issue_status}</span>
+                      </div>
+                      <p className="text-white font-semibold text-sm mb-1">
+                        {cleanDesc(issue.issue_description)}
+                      </p>
+                      <p className="text-gray-400 text-xs">
+                        🖥️ {issue.asset_name} &nbsp;·&nbsp;
+                        📅 {new Date(issue.reported_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                      </p>
+                    </div>
+                    {issue.photo_url && (
+                      <img src={issue.photo_url} alt="issue"
+                        className="w-16 h-16 rounded-xl object-cover shrink-0 border border-white/10" />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* New Ticket Modal */}
       {showModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 50 }}>
-          <div style={{ background: "#fff", borderRadius: "1.5rem 1.5rem 0 0", padding: "1.75rem", width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-              <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#1e293b", margin: 0 }}>New Ticket 🎫</h2>
-              <button onClick={() => setShowModal(false)} style={{ background: "#f1f5f9", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", fontSize: "1.1rem" }}>×</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}>
+          <div className="w-full max-w-md rounded-2xl p-6"
+            style={{ background: "rgba(15,23,42,0.98)", border: "1px solid rgba(255,255,255,0.12)" }}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-white font-bold text-lg">New Ticket 🎫</h2>
+              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#374151", display: "block", marginBottom: 6 }}>Select Asset *</label>
-            <select
-              value={form.asset_id}
-              onChange={e => setForm({ ...form, asset_id: e.target.value })}
-              style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: "0.75rem", padding: "0.65rem", marginBottom: "1rem", fontSize: "0.9rem", background: "#f8fafc" }}
-            >
-              <option value="">-- Select your asset --</option>
-              {myAssets.map(a => (
-                <option key={a.asset_id} value={a.asset_id}>{a.asset_name} ({a.asset_code})</option>
-              ))}
-            </select>
+            <div className="space-y-4">
+              <div>
+                <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">Select Asset *</label>
+                <select value={form.asset_id} onChange={e => setForm({ ...form, asset_id: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-blue-500">
+                  <option value="">-- Select your asset --</option>
+                  {myAssets.map(a => (
+                    <option key={a.asset_id} value={a.asset_id}>{a.asset_name} ({a.asset_code})</option>
+                  ))}
+                </select>
+              </div>
 
-            <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#374151", display: "block", marginBottom: 6 }}>Description *</label>
-            <textarea
-              value={form.description}
-              onChange={e => setForm({ ...form, description: e.target.value })}
-              placeholder="Describe the issue..."
-              rows={3}
-              style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: "0.75rem", padding: "0.65rem", marginBottom: "1rem", fontSize: "0.9rem", resize: "vertical", background: "#f8fafc", boxSizing: "border-box" }}
-            />
+              <div>
+                <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">Description *</label>
+                <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
+                  placeholder="Describe the issue..."
+                  rows={3}
+                  className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-blue-500 resize-none placeholder:text-gray-600" />
+              </div>
 
-            <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#374151", display: "block", marginBottom: 8 }}>Urgency</label>
-            <div style={{ display: "flex", gap: 8, marginBottom: "1rem" }}>
-              {["Low", "Medium", "High"].map(u => (
-                <button key={u} onClick={() => setForm({ ...form, urgency: u })}
-                  style={{
-                    flex: 1, padding: "0.5rem", borderRadius: "0.75rem", cursor: "pointer", fontSize: "0.875rem", fontWeight: 600,
-                    background: form.urgency === u ? urgencyColor[u].bg : "#f1f5f9",
-                    color:      form.urgency === u ? urgencyColor[u].color : "#94a3b8",
-                    border:     form.urgency === u ? `2px solid ${urgencyColor[u].color}` : "2px solid transparent",
-                  }}
-                >{u}</button>
-              ))}
+              <div>
+                <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">Urgency</label>
+                <div className="flex gap-2">
+                  {["Low", "Medium", "High"].map(u => (
+                    <button key={u} onClick={() => setForm({ ...form, urgency: u })}
+                      className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all border ${
+                        form.urgency === u
+                          ? u === "High"   ? "bg-red-500/20 border-red-500/40 text-red-300"
+                          : u === "Medium" ? "bg-amber-500/20 border-amber-500/40 text-amber-300"
+                          :                 "bg-green-500/20 border-green-500/40 text-green-300"
+                          : "bg-white/5 border-white/10 text-gray-500"
+                      }`}>
+                      {u}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">
+                  Photo <span className="text-gray-600 normal-case">(optional)</span>
+                </label>
+                <input type="file" accept="image/*"
+                  onChange={e => setPhoto(e.target.files?.[0] || null)}
+                  className="w-full text-gray-400 text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-white/10 file:text-white file:text-xs file:font-semibold" />
+              </div>
+
+              <button onClick={handleSubmit} disabled={submitting}
+                className="w-full py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-xl disabled:opacity-50 transition-all text-sm">
+                {submitting ? "Submitting..." : "Submit Report →"}
+              </button>
             </div>
-
-            <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#374151", display: "block", marginBottom: 6 }}>
-              Photo <span style={{ color: "#94a3b8", fontWeight: 400 }}>(optional)</span>
-            </label>
-            <input type="file" accept="image/*" onChange={e => setPhoto(e.target.files?.[0] || null)} style={{ width: "100%", marginBottom: "1.5rem", fontSize: "0.85rem" }} />
-
-            <button
-              onClick={handleSubmit}
-              disabled={submitting}
-              style={{ width: "100%", background: submitting ? "#c7d2fe" : "linear-gradient(135deg,#6366f1,#8b5cf6)", color: "#fff", border: "none", borderRadius: "0.875rem", padding: "0.875rem", fontSize: "1rem", fontWeight: 700, cursor: submitting ? "not-allowed" : "pointer" }}
-            >
-              {submitting ? "Submitting..." : "Submit Report →"}
-            </button>
           </div>
         </div>
       )}
     </div>
   );
-      }
+}
