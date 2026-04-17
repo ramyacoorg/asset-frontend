@@ -18,12 +18,14 @@ import {
 const COLORS = ["#6366f1", "#22d3ee", "#f59e0b", "#10b981", "#f43f5e"];
 
 const adminLinks = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", active: true },
-  { icon: Package, label: "Inventory", href: "/inventory" },
-  { icon: Users, label: "All Users", href: "/users" },
-  { icon: GitBranch, label: "Assignments", href: "/assignments" },
-  { icon: AlertTriangle, label: "Issues", href: "/issues" },
-  { icon: FileText, label: "Reports", href: "/reports" },
+  { icon: LayoutDashboard, label: "Dashboard",      href: "/dashboard", active: true },
+  { icon: Package,         label: "Inventory",      href: "/inventory" },
+  { icon: Users,           label: "All Users",      href: "/users" },
+  { icon: GitBranch,       label: "Assignments",    href: "/assignments" },
+  { icon: AlertTriangle,   label: "Issues",         href: "/issues" },
+  { icon: FileText,        label: "Audit Logs",     href: "/audit" },
+  { icon: FileText,        label: "Exit Checklist", href: "/exit-checklist" },
+  { icon: FileText,        label: "Reports",        href: "/reports" },
 ];
 
 const employeeLinks = [

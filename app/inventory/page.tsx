@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { getRole, logout } from "@/lib/auth";
-import { Monitor, LogOut, LayoutDashboard, Package, Users, GitBranch, FileText, Menu, X, Plus, Search, Pencil, Trash2, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Monitor, LogOut, LayoutDashboard, Package, Users, GitBranch, FileText, Menu, X, Plus, Search, Pencil, Trash2, AlertTriangle, ChevronLeft, ChevronRight, QrCode, Download } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 
 interface Asset {
   id: number;
@@ -12,6 +13,10 @@ interface Asset {
   asset_category: string;
   asset_status: string;
   purchase_date?: string;
+  qr_code?: string;
+  qr_value?: string;
+  repair_count?: number;
+  last_used_date?: string;
   created_at: string;
 }
 
@@ -45,6 +50,10 @@ export default function InventoryPage() {
   const [showDelete, setShowDelete] = useState(false);
   const [deleteAsset, setDeleteAsset] = useState<Asset | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  // QR Modal
+  const [qrAsset, setQrAsset] = useState<Asset | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrData, setQrData] = useState<{ qr_value: string } | null>(null);
 
   useEffect(() => {
     const r = getRole();
@@ -103,6 +112,28 @@ export default function InventoryPage() {
     }
   };
 
+  const handleViewQR = async (asset: Asset) => {
+    setQrAsset(asset);
+    setQrData(null);
+    setQrLoading(true);
+    try {
+      const res = await api.get(`/api/qr/${asset.id}`);
+      setQrData(res.data);
+    } catch { alert("Failed to load QR code"); }
+    finally { setQrLoading(false); }
+  };
+
+  const downloadQR = () => {
+    if (!qrData) return;
+    const svg = document.getElementById("asset-qr-svg");
+    if (!svg) return;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const blob = new Blob([svgData], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `${qrAsset?.asset_code}-qr.svg`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const filtered = assets.filter(a =>
     a.asset_name.toLowerCase().includes(search.toLowerCase()) ||
     a.asset_code.toLowerCase().includes(search.toLowerCase())
@@ -112,12 +143,13 @@ export default function InventoryPage() {
   const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const adminLinks = [
-    { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
-    { icon: Package, label: "Inventory", href: "/inventory", active: true },
-    { icon: Users, label: "All Users", href: "/users" },
-    { icon: GitBranch, label: "Assignments", href: "/assignments" },
-    { icon: AlertTriangle, label: "Issues", href: "/issues" },
-    { icon: FileText, label: "Reports", href: "/reports" },
+    { icon: LayoutDashboard, label: "Dashboard",      href: "/dashboard" },
+    { icon: Package,         label: "Inventory",      href: "/inventory", active: true },
+    { icon: Users,           label: "All Users",      href: "/users" },
+    { icon: GitBranch,       label: "Assignments",    href: "/assignments" },
+    { icon: AlertTriangle,   label: "Issues",         href: "/issues" },
+    { icon: FileText,        label: "Audit Logs",     href: "/audit" },
+    { icon: FileText,        label: "Reports",        href: "/reports" },
   ];
 
   if (!role) return null;
@@ -231,6 +263,10 @@ export default function InventoryPage() {
                         <button onClick={() => { setDeleteAsset(asset); setShowDelete(true); }}
                           className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all">
                           <Trash2 className="w-3 h-3" />
+                        </button>
+                        <button onClick={() => handleViewQR(asset)}
+                          className="p-2 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-all" title="View QR">
+                          <QrCode className="w-3 h-3" />
                         </button>
                       </div>
                     </td>
@@ -393,6 +429,34 @@ export default function InventoryPage() {
           </div>
         </div>
       )}
+
+      {/* QR CODE MODAL */}
+      {qrAsset && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}>
+          <div className="w-full max-w-sm rounded-2xl p-8 text-center" style={{ background: "rgba(15,23,42,0.98)", border: "1px solid rgba(255,255,255,0.12)" }}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-white font-bold text-lg">Asset QR Code</h2>
+              <button onClick={() => setQrAsset(null)} className="text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-blue-400 font-mono text-xs mb-1">{qrAsset.asset_code}</p>
+            <p className="text-white font-semibold mb-6">{qrAsset.asset_name}</p>
+            {qrLoading ? (
+              <div className="flex items-center justify-center py-12"><div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full" /></div>
+            ) : qrData ? (
+              <>
+                <div className="bg-white rounded-2xl p-4 inline-block mb-6">
+                  <QRCodeSVG id="asset-qr-svg" value={qrData.qr_value} size={160} />
+                </div>
+                <p className="text-gray-400 text-xs mb-4 font-mono">{qrData.qr_value}</p>
+                <button onClick={downloadQR}
+                  className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-xl text-sm transition-all hover:shadow-lg">
+                  <Download className="w-4 h-4" /> Download QR
+                </button>
+              </>
+            ) : null}
+          </div>
+        </div>
+      )}
     </div>
   );
-      }
+}
