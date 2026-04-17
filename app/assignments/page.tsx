@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { getRole, logout } from "@/lib/auth";
+import {
   Monitor, LogOut, LayoutDashboard, Package, Users, GitBranch,
   FileText, Menu, X, AlertTriangle, Plus, CheckCircle, RotateCcw, ChevronLeft, ChevronRight
 } from "lucide-react";
@@ -85,6 +86,9 @@ export default function AssignmentsPage() {
       alert("Failed to return asset");
     }
   };
+
+  const totalPages = Math.ceil(assignments.length / ITEMS_PER_PAGE) || 1;
+  const paginated = assignments.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   if (!role) return null;
 

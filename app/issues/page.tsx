@@ -6,7 +6,7 @@ import api from "@/lib/api";
 import {
   Monitor, LogOut, LayoutDashboard, Package,
   Users, GitBranch, FileText, Menu, X,
-  AlertTriangle, CheckCircle, Clock, Image, RefreshCw
+  AlertTriangle, CheckCircle, Clock, Image, RefreshCw, ChevronLeft, ChevronRight
 } from "lucide-react";
 
 interface Issue {
@@ -29,6 +29,8 @@ export default function IssuesPage() {
   const [loading, setLoading] = useState(true);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
 
   useEffect(() => {
     const r = getRole();
@@ -75,6 +77,9 @@ export default function IssuesPage() {
     { icon: AlertTriangle, label: "Issues", href: "/issues", active: true },
     { icon: FileText, label: "Reports", href: "/reports" },
   ];
+
+  const totalPages = Math.ceil(issues.length / ITEMS_PER_PAGE) || 1;
+  const paginated = issues.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   if (!role) return null;
 
@@ -173,7 +178,7 @@ export default function IssuesPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {issues.map((issue) => (
+            {paginated.map((issue) => (
               <div key={issue.id} className="rounded-2xl p-5 transition-all hover:scale-[1.01]"
                 style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(20px)" }}>
                 <div className="flex items-start justify-between gap-4">
@@ -247,6 +252,35 @@ export default function IssuesPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {!loading && issues.length > ITEMS_PER_PAGE && (
+          <div className="flex items-center justify-between mt-6 px-4">
+            <p className="text-xs text-gray-400">
+              Showing <span className="font-semibold text-white">{((currentPage - 1) * ITEMS_PER_PAGE) + 1}</span> to <span className="font-semibold text-white">{Math.min(currentPage * ITEMS_PER_PAGE, issues.length)}</span> of <span className="font-semibold text-white">{issues.length}</span> issues
+            </p>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1}
+                className="p-2 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white disabled:opacity-30 transition-all border border-white/10">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <button key={i} onClick={() => setCurrentPage(i + 1)}
+                    className={`w-8 h-8 rounded-xl text-xs font-semibold transition-all ${
+                      currentPage === i + 1 ? "bg-blue-500/20 text-blue-400 border border-blue-500/20" : "text-gray-400 hover:text-white hover:bg-white/5"
+                    }`}>
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages}
+                className="p-2 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white disabled:opacity-30 transition-all border border-white/10">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
       </div>
