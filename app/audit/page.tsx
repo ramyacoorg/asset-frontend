@@ -7,6 +7,8 @@ import {
   Monitor, LogOut, LayoutDashboard, Package, Users, GitBranch,
   FileText, Menu, X, AlertTriangle, ScrollText, ChevronLeft, ChevronRight, Search
 } from "lucide-react";
+import TopBar from "@/components/TopBar";
+import CustomSelect from "@/components/ui/CustomSelect";
 
 interface Log {
   id: number;
@@ -28,13 +30,14 @@ const ACTION_COLORS: Record<string, string> = {
 };
 
 const adminLinks = [
-  { icon: LayoutDashboard, label: "Dashboard",   href: "/dashboard" },
-  { icon: Package,         label: "Inventory",   href: "/inventory" },
-  { icon: Users,           label: "All Users",   href: "/users" },
-  { icon: GitBranch,       label: "Assignments", href: "/assignments" },
-  { icon: AlertTriangle,   label: "Issues",      href: "/issues" },
-  { icon: ScrollText,      label: "Audit Logs",  href: "/audit", active: true },
-  { icon: FileText,        label: "Reports",     href: "/reports" },
+  { icon: LayoutDashboard, label: "Dashboard",      href: "/dashboard" },
+  { icon: Package,         label: "Inventory",      href: "/inventory" },
+  { icon: Users,           label: "All Users",      href: "/users" },
+  { icon: GitBranch,       label: "Assignments",    href: "/assignments" },
+  { icon: AlertTriangle,   label: "Issues",         href: "/issues" },
+  { icon: ScrollText,      label: "Audit Logs",     href: "/audit", active: true },
+  { icon: FileText,        label: "Exit Checklist", href: "/exit-checklist" },
+  { icon: FileText,        label: "Reports",        href: "/reports" },
 ];
 
 const ITEMS = 15;
@@ -93,6 +96,14 @@ export default function AuditPage() {
             {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </button>
         </div>
+        {sidebarOpen && (
+          <div className="px-4 py-3">
+            <div className="flex items-center gap-2 bg-blue-500/10 px-3 py-2 rounded-xl border border-blue-500/20">
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
+              <span className="text-xs font-semibold text-blue-300"> Administrator</span>
+            </div>
+          </div>
+        )}
         <nav className="flex-1 p-3 space-y-1">
           {adminLinks.map(link => (
             <button key={link.href} onClick={() => router.push(link.href)}
@@ -113,6 +124,7 @@ export default function AuditPage() {
 
       {/* MAIN */}
       <div className="flex-1 p-8 overflow-auto">
+        <TopBar />
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-white">Audit Logs</h1>
@@ -127,15 +139,21 @@ export default function AuditPage() {
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by user, asset, or description..."
               className="w-full bg-white/5 border border-white/10 text-white pl-11 pr-4 py-3 rounded-xl text-sm focus:outline-none focus:border-blue-500 placeholder:text-gray-500" />
           </div>
-          <select value={actionFilter} onChange={e => setActionFilter(e.target.value)}
-            className="bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-blue-500">
-            <option value="ALL">All Actions</option>
-            <option value="ADD_ASSET">ADD_ASSET</option>
-            <option value="EDIT_ASSET">EDIT_ASSET</option>
-            <option value="DELETE_ASSET">DELETE_ASSET</option>
-            <option value="ASSIGN_ASSET">ASSIGN_ASSET</option>
-            <option value="RETURN_ASSET">RETURN_ASSET</option>
-          </select>
+          <div className="w-48">
+            <CustomSelect
+              value={actionFilter}
+              onChange={val => setActionFilter(val)}
+              options={[
+                { value: "ALL", label: "All Actions" },
+                { value: "ADD_ASSET", label: "ADD_ASSET" },
+                { value: "EDIT_ASSET", label: "EDIT_ASSET" },
+                { value: "DELETE_ASSET", label: "DELETE_ASSET" },
+                { value: "ASSIGN_ASSET", label: "ASSIGN_ASSET" },
+                { value: "RETURN_ASSET", label: "RETURN_ASSET" }
+              ]}
+              className="w-full"
+            />
+          </div>
         </div>
 
         {/* Table */}

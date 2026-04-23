@@ -4,11 +4,13 @@ import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { getRole, logout } from "@/lib/auth";
 import { Monitor, LogOut, LayoutDashboard, Package, Users, GitBranch, FileText, Menu, X, Plus, Search, AlertTriangle, UserCheck, UserX, ChevronLeft, ChevronRight } from "lucide-react";
+import TopBar from "@/components/TopBar";
 
 interface User {
   id: number;
   full_name: string;
   email: string;
+  role_id: number;
   is_active: boolean;
   created_at: string;
 }
@@ -32,7 +34,7 @@ export default function UsersPage() {
   const ITEMS_PER_PAGE = 6;
 
   useEffect(() => { setCurrentPage(1); }, [search]);
-  
+
   useEffect(() => {
     const r = getRole();
     if (!r) router.push("/login");
@@ -63,8 +65,9 @@ export default function UsersPage() {
       setAddForm({ full_name: "", email: "", password: "", role_id: 2 });
       fetchUsers();
       setTimeout(() => { setShowAdd(false); setAddSuccess(""); }, 2000);
-    } catch (err: any) {
-      setAddError(err?.response?.data?.detail || "Failed to add user");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } };
+      setAddError(error?.response?.data?.detail || "Failed to add user");
     } finally {
       setAddLoading(false);
     }
@@ -77,10 +80,21 @@ export default function UsersPage() {
       setUsers(prev =>
         prev.map(u => u.id === user.id ? { ...u, is_active: res.data.is_active } : u)
       );
-    } catch (err: any) {
-      alert(err?.response?.data?.detail || "Failed to update user status");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } };
+      alert(error?.response?.data?.detail || "Failed to update user status");
     } finally {
       setTogglingId(null);
+    }
+  };
+
+  const handleGenerateChecklist = async (user: User) => {
+    try {
+      const res = await api.post(`/api/hr/exit-checklist/${user.id}`);
+      alert(res.data.message);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } };
+      alert(error?.response?.data?.detail || "Failed to generate checklist");
     }
   };
 
@@ -88,7 +102,7 @@ export default function UsersPage() {
     u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
     u.email?.toLowerCase().includes(search.toLowerCase())
   );
-  
+
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
   const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
@@ -98,6 +112,8 @@ export default function UsersPage() {
     { icon: Users, label: "All Users", href: "/users", active: true },
     { icon: GitBranch, label: "Assignments", href: "/assignments" },
     { icon: AlertTriangle, label: "Issues", href: "/issues" },
+    { icon: FileText, label: "Audit Logs", href: "/audit" },
+    { icon: FileText, label: "Exit Checklist", href: "/exit-checklist" },
     { icon: FileText, label: "Reports", href: "/reports" },
   ];
 
@@ -115,7 +131,7 @@ export default function UsersPage() {
               <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-xl">
                 <Monitor className="w-4 h-4 text-white" />
               </div>
-              <span className="font-bold text-white text-sm">OptiAsset</span>
+              <span className="font-bold text-white text-sm">Assentra</span>
             </div>
           )}
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-gray-400 hover:text-white">
@@ -133,8 +149,7 @@ export default function UsersPage() {
         <nav className="flex-1 p-3 space-y-1">
           {adminLinks.map((link) => (
             <button key={link.label} onClick={() => router.push(link.href)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm ${
-                link.active ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border border-blue-500/20"
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm ${link.active ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border border-blue-500/20"
                 : "text-gray-400 hover:text-white hover:bg-white/10"}`}>
               <link.icon className="w-4 h-4 shrink-0" />
               {sidebarOpen && <span>{link.label}</span>}
@@ -151,6 +166,7 @@ export default function UsersPage() {
 
       {/* MAIN */}
       <div className="flex-1 p-8 overflow-auto">
+        <TopBar />
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white">All Users </h1>
@@ -185,7 +201,15 @@ export default function UsersPage() {
                     {user.full_name?.[0] ?? "U"}
                   </div>
                   <div>
-                    <p className="text-white font-semibold text-sm">{user.full_name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-white font-semibold text-sm">{user.full_name}</p>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${user.role_id === 1
+                        ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                        : "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                        }`}>
+                        {user.role_id === 1 ? "  Admin" : " Employee"}
+                      </span>
+                    </div>
                     <p className="text-gray-400 text-xs">{user.email}</p>
                   </div>
                 </div>
@@ -206,11 +230,10 @@ export default function UsersPage() {
                 <button
                   onClick={() => handleToggleActive(user)}
                   disabled={togglingId === user.id}
-                  className={`mt-4 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-all disabled:opacity-50 ${
-                    user.is_active
-                      ? "bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20"
-                      : "bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20"
-                  }`}
+                  className={`mt-4 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-all disabled:opacity-50 ${user.is_active
+                    ? "bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20"
+                    : "bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20"
+                    }`}
                 >
                   {togglingId === user.id ? (
                     <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
@@ -220,6 +243,15 @@ export default function UsersPage() {
                     <><UserCheck className="w-3 h-3" /> Activate</>
                   )}
                 </button>
+
+                {!user.is_active && (
+                  <button
+                    onClick={() => handleGenerateChecklist(user)}
+                    className="mt-2 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border border-amber-500/20 transition-all"
+                  >
+                    <FileText className="w-3 h-3" /> Generate Exit Checklist
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -239,9 +271,8 @@ export default function UsersPage() {
               <div className="flex items-center gap-1">
                 {Array.from({ length: totalPages }).map((_, i) => (
                   <button key={i} onClick={() => setCurrentPage(i + 1)}
-                    className={`w-8 h-8 rounded-xl text-xs font-semibold transition-all ${
-                      currentPage === i + 1 ? "bg-blue-500/20 text-blue-400 border border-blue-500/20" : "text-gray-400 hover:text-white hover:bg-white/5"
-                    }`}>
+                    className={`w-8 h-8 rounded-xl text-xs font-semibold transition-all ${currentPage === i + 1 ? "bg-blue-500/20 text-blue-400 border border-blue-500/20" : "text-gray-400 hover:text-white hover:bg-white/5"
+                      }`}>
                     {i + 1}
                   </button>
                 ))}
@@ -271,32 +302,32 @@ export default function UsersPage() {
             <div className="space-y-4">
               <div>
                 <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">Full Name</label>
-                <input value={addForm.full_name} onChange={(e) => setAddForm({...addForm, full_name: e.target.value})}
+                <input value={addForm.full_name} onChange={(e) => setAddForm({ ...addForm, full_name: e.target.value })}
                   placeholder="e.g. John Smith"
                   className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-blue-500" />
               </div>
               <div>
                 <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">Email</label>
-                <input value={addForm.email} onChange={(e) => setAddForm({...addForm, email: e.target.value})}
+                <input value={addForm.email} onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
                   placeholder="e.g. john@company.com"
                   className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-blue-500" />
               </div>
               <div>
                 <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">Password</label>
-                <input type="password" value={addForm.password} onChange={(e) => setAddForm({...addForm, password: e.target.value})}
+                <input type="password" value={addForm.password} onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
                   placeholder="Create a password"
                   className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-blue-500" />
               </div>
               <div>
                 <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">Role</label>
                 <div className="grid grid-cols-2 gap-3">
-                  <button onClick={() => setAddForm({...addForm, role_id: 1})}
+                  <button onClick={() => setAddForm({ ...addForm, role_id: 1 })}
                     className={`py-3 rounded-xl text-sm font-semibold transition-all ${addForm.role_id === 1 ? "bg-blue-500/20 border border-blue-500/40 text-blue-300" : "bg-white/5 border border-white/10 text-gray-400"}`}>
-                     Admin
+                    Admin
                   </button>
-                  <button onClick={() => setAddForm({...addForm, role_id: 2})}
+                  <button onClick={() => setAddForm({ ...addForm, role_id: 2 })}
                     className={`py-3 rounded-xl text-sm font-semibold transition-all ${addForm.role_id === 2 ? "bg-green-500/20 border border-green-500/40 text-green-300" : "bg-white/5 border border-white/10 text-gray-400"}`}>
-                     Employee
+                    Employee
                   </button>
                 </div>
               </div>

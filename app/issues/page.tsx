@@ -8,6 +8,7 @@ import {
   Users, GitBranch, FileText, Menu, X,
   AlertTriangle, CheckCircle, Clock, Image, RefreshCw, ChevronLeft, ChevronRight
 } from "lucide-react";
+import TopBar from "@/components/TopBar";
 
 interface Issue {
   id: number;
@@ -75,6 +76,8 @@ export default function IssuesPage() {
     { icon: Users, label: "All Users", href: "/users" },
     { icon: GitBranch, label: "Assignments", href: "/assignments" },
     { icon: AlertTriangle, label: "Issues", href: "/issues", active: true },
+    { icon: FileText, label: "Audit Logs", href: "/audit" },
+    { icon: FileText, label: "Exit Checklist", href: "/exit-checklist" },
     { icon: FileText, label: "Reports", href: "/reports" },
   ];
 
@@ -97,7 +100,7 @@ export default function IssuesPage() {
               <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-xl">
                 <Monitor className="w-4 h-4 text-white" />
               </div>
-              <span className="font-bold text-white text-sm">OptiAsset</span>
+              <span className="font-bold text-white text-sm">Assentra</span>
             </div>
           )}
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-gray-400 hover:text-white">
@@ -137,8 +140,9 @@ export default function IssuesPage() {
       </div>
 
       {/* MAIN */}
-      <div className="flex-1 p-8">
-        <div className="mb-8">
+      <div className="flex-1 p-8 overflow-auto">
+        <TopBar />
+        <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-white">Asset Issues 🔧</h1>
           <p className="text-gray-400 text-sm mt-1">All reported issues from employees</p>
         </div>

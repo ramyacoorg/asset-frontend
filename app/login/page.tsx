@@ -41,8 +41,9 @@ export default function LoginPage() {
       const res = await api.post("/api/auth/login", { email: emailVal, password: passVal });
       saveAuth(res.data.access_token, res.data.role);
       router.push("/dashboard");
-    } catch (err: any) {
-      setSiError(err?.response?.data?.detail || "Invalid email or password.");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } };
+      setSiError(error?.response?.data?.detail || "Invalid email or password.");
     } finally {
       setSiLoading(false);
     }
@@ -67,8 +68,9 @@ export default function LoginPage() {
       });
       setSuSuccess("Account created! You can now sign in.");
       setTab("signin");
-    } catch (err: any) {
-      setSuError(err?.response?.data?.detail || "Registration failed. Try again.");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } };
+      setSuError(error?.response?.data?.detail || "Registration failed. Try again.");
     } finally {
       setSuLoading(false);
     }
@@ -80,36 +82,19 @@ export default function LoginPage() {
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: #0c1120; }
-        .lp { min-height: 100vh; width: 100%; font-family: 'Plus Jakarta Sans', sans-serif; background: #0c1120; display: flex; position: relative; overflow: hidden; }
+        .lp { min-height: 100vh; width: 100%; font-family: 'Plus Jakarta Sans', sans-serif; background: #0c1120; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; flex-direction: column; }
         .lp-bg { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
         .lp-orb { position: absolute; border-radius: 50%; filter: blur(100px); }
-        .lp-orb-1 { width: 700px; height: 700px; background: rgba(79,70,229,.22); top: -280px; left: -180px; }
-        .lp-orb-2 { width: 500px; height: 500px; background: rgba(14,165,233,.16); bottom: -180px; right: 120px; }
-        .lp-orb-3 { width: 300px; height: 300px; background: rgba(124,58,237,.14); top: 35%; right: -60px; }
+        .lp-orb-1 { width: 700px; height: 700px; background: rgba(79,70,229,.15); top: -200px; left: -200px; }
+        .lp-orb-2 { width: 500px; height: 500px; background: rgba(14,165,233,.10); bottom: -180px; right: -120px; }
+        .lp-orb-3 { width: 300px; height: 300px; background: rgba(124,58,237,.10); top: 35%; right: 20%; }
         .lp-dots { position: absolute; inset: 0; background-image: radial-gradient(circle, rgba(148,163,184,.06) 1px, transparent 1px); background-size: 28px 28px; }
-        .lp-left { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 3rem 4rem; position: relative; z-index: 2; max-width: 580px; }
-        .lp-brand { display: flex; align-items: center; gap: 13px; margin-bottom: 2.5rem; }
+        .lp-brand { display: flex; align-items: center; gap: 13px; margin-bottom: 2rem; position: relative; z-index: 2; }
         .lp-brand-icon { width: 44px; height: 44px; border-radius: 12px; background: #4f46e5; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 1px rgba(99,102,241,.5), 0 4px 16px rgba(79,70,229,.35); }
         .lp-brand-icon svg { width: 20px; height: 20px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-        .lp-brand-name { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700; color: #f1f5f9; letter-spacing: -.4px; }
-        .lp-brand-sub { font-size: 10px; color: #475569; letter-spacing: 1.8px; text-transform: uppercase; margin-top: 2px; }
-        .lp-chip { display: inline-flex; align-items: center; gap: 6px; background: rgba(79,70,229,.15); border: 1px solid rgba(99,102,241,.25); border-radius: 20px; padding: 4px 12px; font-size: 10px; color: #818cf8; font-weight: 700; letter-spacing: 1px; margin-bottom: 1.5rem; width: fit-content; }
-        .lp-chip-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 6px rgba(74,222,128,.8); animation: lp-pulse 2s ease-in-out infinite; }
-        @keyframes lp-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
-        .lp-hero-title { font-family: 'Space Grotesk', sans-serif; font-size: 48px; font-weight: 700; color: #f1f5f9; line-height: 1.08; letter-spacing: -2px; margin-bottom: 1rem; }
-        .lp-hero-title .accent { background: linear-gradient(90deg, #818cf8 0%, #38bdf8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .lp-hero-sub { font-size: 15px; color: #64748b; line-height: 1.75; max-width: 380px; margin-bottom: 2rem; }
-        .lp-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 2rem; }
-        .lp-stat { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); border-radius: 14px; padding: 16px 14px; }
-        .lp-stat-num { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700; color: #818cf8; }
-        .lp-stat-label { font-size: 10px; color: #475569; margin-top: 3px; }
-        .lp-features { display: flex; flex-direction: column; gap: 10px; }
-        .lp-feat { display: flex; align-items: center; gap: 10px; }
-        .lp-feat-dot { width: 6px; height: 6px; border-radius: 50%; background: #4f46e5; flex-shrink: 0; }
-        .lp-feat-text { font-size: 13px; color: #64748b; }
-        .lp-divider-panel { width: 1px; background: linear-gradient(to bottom, transparent, rgba(255,255,255,.07) 30%, rgba(255,255,255,.07) 70%, transparent); position: relative; z-index: 2; }
-        .lp-right { width: 480px; display: flex; align-items: center; justify-content: center; padding: 2.5rem 2rem; position: relative; z-index: 2; }
-        .lp-card { width: 100%; background: rgba(255,255,255,.045); border: 1px solid rgba(255,255,255,.11); border-radius: 22px; padding: 32px 28px; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); position: relative; overflow: hidden; }
+        .lp-brand-name { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 700; color: #f1f5f9; letter-spacing: -.4px; }
+        .lp-center { width: 100%; max-width: 480px; position: relative; z-index: 2; padding: 0 1.5rem; }
+        .lp-card { width: 100%; background: rgba(255,255,255,.045); border: 1px solid rgba(255,255,255,.11); border-radius: 22px; padding: 32px 28px; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); position: relative; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
         .lp-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #4f46e5, #7c3aed, #0ea5e9); border-radius: 22px 22px 0 0; }
         .lp-tabs { display: flex; background: rgba(0,0,0,.3); border-radius: 12px; padding: 4px; gap: 4px; margin-bottom: 24px; }
         .lp-tab { flex: 1; padding: 9px; font-size: 13px; font-weight: 600; border: none; background: transparent; color: #475569; border-radius: 9px; cursor: pointer; transition: all .2s ease; font-family: 'Plus Jakarta Sans', sans-serif; }
@@ -147,11 +132,7 @@ export default function LoginPage() {
         .lp-role-label { font-size: 12px; font-weight: 600; color: #94a3b8; }
         .lp-role-btn.selected .lp-role-label { color: #a5b4fc; }
         @media (max-width: 900px) {
-          .lp { flex-direction: column; }
-          .lp-left { max-width: 100%; padding: 2rem; }
-          .lp-divider-panel { display: none; }
-          .lp-right { width: 100%; padding: 0 1.5rem 2rem; }
-          .lp-hero-title { font-size: 32px; }
+          .lp-center { padding: 0 1rem; }
         }
       `}</style>
 
@@ -163,45 +144,16 @@ export default function LoginPage() {
           <div className="lp-dots" />
         </div>
 
-        <div className="lp-left">
-          <div className="lp-brand">
-            <div className="lp-brand-icon">
-              <svg viewBox="0 0 24 24">
-                <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" />
-              </svg>
-            </div>
-            <div>
-              <div className="lp-brand-name">OptiAsset</div>
-              <div className="lp-brand-sub">IT Asset Management</div>
-            </div>
+        <div className="lp-brand">
+          <div className="lp-brand-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" />
+            </svg>
           </div>
-          <div className="lp-chip">
-            <span className="lp-chip-dot" />
-            PLATFORM v2.0 · LIVE
-          </div>
-          <div className="lp-hero-title">
-            Manage every<br />
-            asset <span className="accent">smarter</span><br />
-            and faster.
-          </div>
-          <div className="lp-hero-sub">
-            Track, assign, and maintain your IT assets across your entire organization.
-          </div>
-          <div className="lp-stats">
-            <div className="lp-stat"><div className="lp-stat-num">2.4k</div><div className="lp-stat-label">Assets tracked</div></div>
-            <div className="lp-stat"><div className="lp-stat-num">98%</div><div className="lp-stat-label">Uptime SLA</div></div>
-            <div className="lp-stat"><div className="lp-stat-num">150+</div><div className="lp-stat-label">Teams using it</div></div>
-          </div>
-          <div className="lp-features">
-            {["Role-based access control (RBAC)", "Real-time issue tracking & photo uploads", "Asset assignments & inventory reports"].map((f) => (
-              <div className="lp-feat" key={f}><div className="lp-feat-dot" /><div className="lp-feat-text">{f}</div></div>
-            ))}
-          </div>
+          <div className="lp-brand-name">Assentra</div>
         </div>
 
-        <div className="lp-divider-panel" />
-
-        <div className="lp-right">
+        <div className="lp-center">
           <div className="lp-card">
             <div className="lp-tabs">
               <button className={`lp-tab${tab === "signin" ? " active" : ""}`} onClick={() => setTab("signin")}>Sign In</button>
@@ -211,7 +163,7 @@ export default function LoginPage() {
             {tab === "signin" && (
               <form onSubmit={handleSignIn}>
                 <div className="lp-form-title">Welcome back</div>
-                <div className="lp-form-sub">Sign in to your OptiAsset account</div>
+                <div className="lp-form-sub">Sign in to your Assentra account</div>
                 {siError && <div className="lp-error">{siError}</div>}
                 {suSuccess && <div className="lp-success">{suSuccess}</div>}
                 <div className="lp-field">
@@ -265,7 +217,7 @@ export default function LoginPage() {
             {tab === "signup" && (
               <form onSubmit={handleSignUp}>
                 <div className="lp-form-title">Create account</div>
-                <div className="lp-form-sub">Join OptiAsset — it&apos;s free to get started</div>
+                <div className="lp-form-sub">Join Assentra — it&apos;s free to get started</div>
                 {suError && <div className="lp-error">{suError}</div>}
                 {suSuccess && <div className="lp-success">{suSuccess}</div>}
                 <div className="lp-grid-2">

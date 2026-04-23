@@ -8,13 +8,14 @@ import {
   Monitor, LogOut, LayoutDashboard, Laptop, AlertTriangle,
   Menu, X, Package2, CheckCircle
 } from "lucide-react";
+import TopBar from "@/components/TopBar";
 
 
 
 const employeeLinks = [
-  { icon: LayoutDashboard, label: "Dashboard",  href: "/dashboard" },
-  { icon: Laptop,          label: "My Gear",    href: "/my-gear", active: true },
-  { icon: AlertTriangle,   label: "My Tickets", href: "/my-tickets" },
+  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
+  { icon: Laptop, label: "My Gear", href: "/my-gear", active: true },
+  { icon: AlertTriangle, label: "My Tickets", href: "/my-tickets" },
 ];
 
 const categoryIcon: any = {
@@ -23,14 +24,14 @@ const categoryIcon: any = {
 
 export default function MyGearPage() {
   const router = useRouter();
-  const [role, setRole]             = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [assets, setAssets]         = useState<any[]>([]);
-  const [loading, setLoading]       = useState(true);
+  const [assets, setAssets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showIssueModal, setShowIssueModal] = useState(false);
-  const [selectedAsset, setSelectedAsset]   = useState<any>(null);
-  const [issueForm, setIssueForm]   = useState({ description: "", urgency: "Medium" });
-  const [photo, setPhoto]           = useState<File | null>(null);
+  const [selectedAsset, setSelectedAsset] = useState<any>(null);
+  const [issueForm, setIssueForm] = useState({ description: "", urgency: "Medium" });
+  const [photo, setPhoto] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -64,9 +65,7 @@ export default function MyGearPage() {
       fd.append("asset_id", selectedAsset.asset_id.toString());
       fd.append("issue_description", `[${issueForm.urgency}] ${issueForm.description}`);
       if (photo) fd.append("photo", photo);
-      await api.post("/api/issues/report", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      await api.post("/api/issues/report", fd);
       setShowIssueModal(false);
       alert("Issue reported successfully!");
     } catch {
@@ -94,7 +93,7 @@ export default function MyGearPage() {
               <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-xl">
                 <Monitor className="w-4 h-4 text-white" />
               </div>
-              <span className="font-bold text-white text-sm">OptiAsset</span>
+              <span className="font-bold text-white text-sm">Assentra</span>
             </div>
           )}
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-gray-400 hover:text-white">
@@ -114,11 +113,10 @@ export default function MyGearPage() {
         <nav className="flex-1 p-3 space-y-1">
           {employeeLinks.map((link) => (
             <button key={link.label} onClick={() => router.push(link.href)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm ${
-                link.active
-                  ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border border-blue-500/20"
-                  : "text-gray-400 hover:text-white hover:bg-white/10"
-              }`}>
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm ${link.active
+                ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border border-blue-500/20"
+                : "text-gray-400 hover:text-white hover:bg-white/10"
+                }`}>
               <link.icon className="w-4 h-4 shrink-0" />
               {sidebarOpen && <span>{link.label}</span>}
             </button>
@@ -135,8 +133,9 @@ export default function MyGearPage() {
 
       {/* MAIN */}
       <div className="flex-1 p-8 overflow-auto">
+        <TopBar />
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white">My Gear 💻</h1>
+          <h1 className="text-3xl font-bold text-white">My Gear </h1>
           <p className="text-gray-400 text-sm mt-1">Assets assigned to you</p>
         </div>
 
@@ -227,13 +226,12 @@ export default function MyGearPage() {
                 <div className="flex gap-2">
                   {["Low", "Medium", "High"].map(u => (
                     <button key={u} onClick={() => setIssueForm({ ...issueForm, urgency: u })}
-                      className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all border ${
-                        issueForm.urgency === u
-                          ? u === "High"   ? "bg-red-500/20 border-red-500/40 text-red-300"
+                      className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all border ${issueForm.urgency === u
+                        ? u === "High" ? "bg-red-500/20 border-red-500/40 text-red-300"
                           : u === "Medium" ? "bg-amber-500/20 border-amber-500/40 text-amber-300"
-                          :                 "bg-green-500/20 border-green-500/40 text-green-300"
-                          : "bg-white/5 border-white/10 text-gray-500"
-                      }`}>
+                            : "bg-green-500/20 border-green-500/40 text-green-300"
+                        : "bg-white/5 border-white/10 text-gray-500"
+                        }`}>
                       {u}
                     </button>
                   ))}

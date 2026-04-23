@@ -123,4 +123,20 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Fix invisible dropdown options on dark theme */
+  select {
+    background-color: #1e293b !important;
+    color: #f1f5f9 !important;
+    color-scheme: dark;
+  }
+  select option {
+    background-color: #1e293b !important;
+    color: #f1f5f9 !important;
+  }
+  select option:checked,
+  select option:hover {
+    background-color: #3730a3 !important;
+    color: #ffffff !important;
+  }
 }

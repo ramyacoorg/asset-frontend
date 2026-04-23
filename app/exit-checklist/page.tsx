@@ -7,6 +7,8 @@ import {
   Monitor, LogOut, LayoutDashboard, Package, Users, GitBranch,
   FileText, Menu, X, AlertTriangle, ScrollText, ClipboardList, CheckCircle, Clock
 } from "lucide-react";
+import TopBar from "@/components/TopBar";
+import CustomSelect from "@/components/ui/CustomSelect";
 
 interface ChecklistItem {
   id: number;
@@ -108,6 +110,14 @@ export default function ExitChecklistPage() {
             {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </button>
         </div>
+        {sidebarOpen && (
+          <div className="px-4 py-3">
+            <div className="flex items-center gap-2 bg-blue-500/10 px-3 py-2 rounded-xl border border-blue-500/20">
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
+              <span className="text-xs font-semibold text-blue-300"> Administrator</span>
+            </div>
+          </div>
+        )}
         <nav className="flex-1 p-3 space-y-1">
           {adminLinks.map(link => (
             <button key={link.href} onClick={() => router.push(link.href)}
@@ -128,6 +138,7 @@ export default function ExitChecklistPage() {
 
       {/* MAIN */}
       <div className="flex-1 p-8 overflow-auto">
+        <TopBar />
         <div className="flex items-start justify-between mb-8 flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white">Exit Checklist</h1>
@@ -135,11 +146,15 @@ export default function ExitChecklistPage() {
           </div>
           {/* Generate form */}
           <div className="flex items-center gap-3">
-            <select value={selectedEmployee} onChange={e => setSelectedEmployee(e.target.value)}
-              className="bg-white/5 border border-white/10 text-white px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:border-blue-500">
-              <option value="">Select employee…</option>
-              {users.map(u => <option key={u.id} value={u.id}>{u.full_name}</option>)}
-            </select>
+            <div className="w-56">
+              <CustomSelect
+                value={selectedEmployee}
+                onChange={val => setSelectedEmployee(val)}
+                options={users.map(u => ({ value: String(u.id), label: u.full_name }))}
+                placeholder="Select employee..."
+                className="w-full"
+              />
+            </div>
             <button onClick={handleGenerate} disabled={!!generating}
               className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:shadow-xl transition-all disabled:opacity-50">
               {generating ? <div className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin" /> : <ClipboardList className="w-4 h-4" />}

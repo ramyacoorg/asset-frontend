@@ -4,32 +4,33 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { getRole, logout } from "@/lib/auth";
-import {
-  Monitor, LogOut, LayoutDashboard, Package, Users, GitBranch,
-  FileText, Menu, X, AlertTriangle, Plus, CheckCircle, RotateCcw, ChevronLeft, ChevronRight
-} from "lucide-react";
+import { Monitor, LogOut, LayoutDashboard, Package, Users, GitBranch, FileText, Menu, X, Plus, AlertTriangle, ChevronLeft, ChevronRight, CheckCircle, RotateCcw } from "lucide-react";
+import TopBar from "@/components/TopBar";
+import CustomSelect from "@/components/ui/CustomSelect";
 
 const adminLinks = [
-  { icon: LayoutDashboard, label: "Dashboard",   href: "/dashboard" },
-  { icon: Package,         label: "Inventory",   href: "/inventory" },
-  { icon: Users,           label: "All Users",   href: "/users" },
-  { icon: GitBranch,       label: "Assignments", href: "/assignments", active: true },
-  { icon: AlertTriangle,   label: "Issues",      href: "/issues" },
-  { icon: FileText,        label: "Reports",     href: "/reports" },
+  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
+  { icon: Package, label: "Inventory", href: "/inventory" },
+  { icon: Users, label: "All Users", href: "/users" },
+  { icon: GitBranch, label: "Assignments", href: "/assignments", active: true },
+  { icon: AlertTriangle, label: "Issues", href: "/issues" },
+  { icon: FileText, label: "Audit Logs", href: "/audit" },
+  { icon: FileText, label: "Exit Checklist", href: "/exit-checklist" },
+  { icon: FileText, label: "Reports", href: "/reports" },
 ];
 
 export default function AssignmentsPage() {
   const router = useRouter();
-  const [role, setRole]               = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [availableAssets, setAvailableAssets] = useState<any[]>([]);
-  const [users, setUsers]             = useState<any[]>([]);
-  const [showModal, setShowModal]     = useState(false);
-  const [form, setForm]               = useState({ asset_id: "", employee_id: "" });
-  const [loading, setLoading]         = useState(true);
-  const [submitting, setSubmitting]   = useState(false);
-  const [error, setError]             = useState("");
+  const [users, setUsers] = useState<any[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState({ asset_id: "", employee_id: "" });
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 8;
 
@@ -52,8 +53,9 @@ export default function AssignmentsPage() {
       setAssignments(aRes.data);
       setAvailableAssets(asRes.data.filter((a: any) => a.asset_status === "available"));
       setUsers(uRes.data);
-    } catch (e: any) {
-      setError(e?.response?.data?.detail || "Failed to load");
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { detail?: string } } };
+      setError(err?.response?.data?.detail || "Failed to load");
     } finally {
       setLoading(false);
     }
@@ -64,14 +66,15 @@ export default function AssignmentsPage() {
     setSubmitting(true);
     try {
       await api.post("/api/assignments/assign", {
-        asset_id:    parseInt(form.asset_id),
+        asset_id: parseInt(form.asset_id),
         employee_id: parseInt(form.employee_id),
       });
       setShowModal(false);
       setForm({ asset_id: "", employee_id: "" });
       fetchAll();
-    } catch (e: any) {
-      alert(e?.response?.data?.detail || "Failed to assign");
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { detail?: string } } };
+      alert(err?.response?.data?.detail || "Failed to assign");
     } finally {
       setSubmitting(false);
     }
@@ -108,7 +111,7 @@ export default function AssignmentsPage() {
               <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-xl">
                 <Monitor className="w-4 h-4 text-white" />
               </div>
-              <span className="font-bold text-white text-sm">OptiAsset</span>
+              <span className="font-bold text-white text-sm">Assentra</span>
             </div>
           )}
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-gray-400 hover:text-white">
@@ -120,7 +123,7 @@ export default function AssignmentsPage() {
           <div className="px-4 py-3">
             <div className="flex items-center gap-2 bg-blue-500/10 px-3 py-2 rounded-xl border border-blue-500/20">
               <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
-              <span className="text-xs font-semibold text-blue-300">👑 Administrator</span>
+              <span className="text-xs font-semibold text-blue-300"> Administrator</span>
             </div>
           </div>
         )}
@@ -128,11 +131,10 @@ export default function AssignmentsPage() {
         <nav className="flex-1 p-3 space-y-1">
           {adminLinks.map((link) => (
             <button key={link.label} onClick={() => router.push(link.href)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm ${
-                link.active
-                  ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border border-blue-500/20"
-                  : "text-gray-400 hover:text-white hover:bg-white/10"
-              }`}>
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm ${link.active
+                ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border border-blue-500/20"
+                : "text-gray-400 hover:text-white hover:bg-white/10"
+                }`}>
               <link.icon className="w-4 h-4 shrink-0" />
               {sidebarOpen && <span>{link.label}</span>}
             </button>
@@ -149,9 +151,10 @@ export default function AssignmentsPage() {
 
       {/* MAIN */}
       <div className="flex-1 p-8 overflow-auto">
+        <TopBar />
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">Assignments 🔗</h1>
+            <h1 className="text-3xl font-bold text-white">Assignments </h1>
             <p className="text-gray-400 text-sm mt-1">Track asset assignments across employees</p>
           </div>
           <button onClick={() => setShowModal(true)}
@@ -163,9 +166,9 @@ export default function AssignmentsPage() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           {[
-            { label: "Total",    value: assignments.length,                                    icon: GitBranch,  color: "from-indigo-400 to-purple-500" },
-            { label: "Active",   value: assignments.filter(a => a.status === "active").length,   icon: CheckCircle,color: "from-emerald-400 to-green-500" },
-            { label: "Returned", value: assignments.filter(a => a.status === "returned").length, icon: RotateCcw,  color: "from-amber-400 to-orange-500" },
+            { label: "Total", value: assignments.length, icon: GitBranch, color: "from-indigo-400 to-purple-500" },
+            { label: "Active", value: assignments.filter(a => a.status === "active").length, icon: CheckCircle, color: "from-emerald-400 to-green-500" },
+            { label: "Returned", value: assignments.filter(a => a.status === "returned").length, icon: RotateCcw, color: "from-amber-400 to-orange-500" },
           ].map(s => (
             <div key={s.label} className="rounded-2xl p-5 flex items-center gap-4 transition-all hover:scale-[1.02]"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(20px)" }}>
@@ -227,11 +230,10 @@ export default function AssignmentsPage() {
                       {a.return_date ? `Returned: ${new Date(a.return_date).toLocaleDateString()}` : `Since: ${new Date(a.assigned_date).toLocaleDateString()}`}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        a.status === "active"
-                          ? "bg-green-500/20 text-green-400"
-                          : "bg-amber-500/20 text-amber-400"
-                      }`}>{a.status}</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${a.status === "active"
+                        ? "bg-green-500/20 text-green-400"
+                        : "bg-amber-500/20 text-amber-400"
+                        }`}>{a.status}</span>
                     </td>
                     <td className="px-6 py-4">
                       {a.status === "active" && (
@@ -262,9 +264,8 @@ export default function AssignmentsPage() {
               <div className="flex items-center gap-1">
                 {Array.from({ length: totalPages }).map((_, i) => (
                   <button key={i} onClick={() => setCurrentPage(i + 1)}
-                    className={`w-8 h-8 rounded-xl text-xs font-semibold transition-all ${
-                      currentPage === i + 1 ? "bg-blue-500/20 text-blue-400 border border-blue-500/20" : "text-gray-400 hover:text-white hover:bg-white/5"
-                    }`}>
+                    className={`w-8 h-8 rounded-xl text-xs font-semibold transition-all ${currentPage === i + 1 ? "bg-blue-500/20 text-blue-400 border border-blue-500/20" : "text-gray-400 hover:text-white hover:bg-white/5"
+                      }`}>
                     {i + 1}
                   </button>
                 ))}
@@ -292,23 +293,27 @@ export default function AssignmentsPage() {
             <div className="space-y-4">
               <div>
                 <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">Available Asset</label>
-                <select value={form.asset_id} onChange={e => setForm({ ...form, asset_id: e.target.value })}
-                  className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-blue-500">
-                  <option value="">-- Select Asset --</option>
-                  {availableAssets.map(a => (
-                    <option key={a.id} value={a.id}>{a.asset_name} ({a.asset_code})</option>
-                  ))}
-                </select>
+                <CustomSelect
+                  value={form.asset_id}
+                  onChange={val => setForm({ ...form, asset_id: val })}
+                  options={availableAssets.map((a: any) => ({
+                    value: String(a.id),
+                    label: `${a.asset_name} (${a.asset_code})`
+                  }))}
+                  placeholder="-- Select Asset --"
+                />
               </div>
               <div>
                 <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">Employee</label>
-                <select value={form.employee_id} onChange={e => setForm({ ...form, employee_id: e.target.value })}
-                  className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-blue-500">
-                  <option value="">-- Select Employee --</option>
-                  {users.map(u => (
-                    <option key={u.id} value={u.id}>{u.full_name} ({u.email})</option>
-                  ))}
-                </select>
+                <CustomSelect
+                  value={form.employee_id}
+                  onChange={val => setForm({ ...form, employee_id: val })}
+                  options={users.map((u: any) => ({
+                    value: String(u.id),
+                    label: `${u.full_name} (${u.email})`
+                  }))}
+                  placeholder="-- Select Employee --"
+                />
               </div>
               <div className="flex gap-3 pt-1">
                 <button onClick={() => { setShowModal(false); setForm({ asset_id: "", employee_id: "" }); }}

@@ -14,18 +14,19 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip,
   PieChart, Pie, Cell, ResponsiveContainer, Legend
 } from "recharts";
+import TopBar from "@/components/TopBar";
 
 const COLORS = ["#6366f1", "#22d3ee", "#f59e0b", "#10b981", "#f43f5e"];
 
 const adminLinks = [
-  { icon: LayoutDashboard, label: "Dashboard",      href: "/dashboard", active: true },
-  { icon: Package,         label: "Inventory",      href: "/inventory" },
-  { icon: Users,           label: "All Users",      href: "/users" },
-  { icon: GitBranch,       label: "Assignments",    href: "/assignments" },
-  { icon: AlertTriangle,   label: "Issues",         href: "/issues" },
-  { icon: FileText,        label: "Audit Logs",     href: "/audit" },
-  { icon: FileText,        label: "Exit Checklist", href: "/exit-checklist" },
-  { icon: FileText,        label: "Reports",        href: "/reports" },
+  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", active: true },
+  { icon: Package, label: "Inventory", href: "/inventory" },
+  { icon: Users, label: "All Users", href: "/users" },
+  { icon: GitBranch, label: "Assignments", href: "/assignments" },
+  { icon: AlertTriangle, label: "Issues", href: "/issues" },
+  { icon: FileText, label: "Audit Logs", href: "/audit" },
+  { icon: FileText, label: "Exit Checklist", href: "/exit-checklist" },
+  { icon: FileText, label: "Reports", href: "/reports" },
 ];
 
 const employeeLinks = [
@@ -52,9 +53,7 @@ export default function DashboardPage() {
       const fd = new FormData();
       fd.append("photo", file);
 
-      const res = await api.post("/api/profile/upload-photo", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await api.post("/api/profile/upload-photo", fd);
 
       setData((prev: any) => ({ ...prev, photo_url: res.data.photo_url }));
     } catch (err) {
@@ -107,7 +106,7 @@ export default function DashboardPage() {
             <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-xl">
               <Monitor className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold text-white text-sm">OptiAsset</span>
+            <span className="font-bold text-white text-sm">Assentra</span>
           </div>
         )}
         <button
@@ -124,7 +123,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 bg-blue-500/10 px-3 py-2 rounded-xl border border-blue-500/20">
             <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
             <span className="text-xs font-semibold text-blue-300">
-              {role === "admin" ? "👑 Administrator" : "👤 Employee"}
+              {role === "admin" ? " Administrator" : " Employee"}
             </span>
           </div>
         </div>
@@ -137,8 +136,8 @@ export default function DashboardPage() {
             key={link.label}
             onClick={() => router.push(link.href)}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm ${link.active
-                ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border border-blue-500/20"
-                : "text-gray-400 hover:text-white hover:bg-white/10"
+              ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border border-blue-500/20"
+              : "text-gray-400 hover:text-white hover:bg-white/10"
               }`}
           >
             <link.icon className="w-4 h-4 shrink-0" />
@@ -205,6 +204,8 @@ export default function DashboardPage() {
       { label: "Under Repair", value: data.under_repair ?? 0, icon: Wrench, color: "from-amber-400 to-orange-500" },
       { label: "Total Users", value: data.total_users ?? 0, icon: Users, color: "from-violet-400 to-purple-500" },
       { label: "Open Issues", value: data.open_issues ?? 0, icon: AlertTriangle, color: "from-rose-400 to-red-500" },
+      { label: "Underutilized", value: data.underutilized_assets ?? 0, icon: TrendingUp, color: "from-pink-400 to-rose-500" },
+      { label: "High Risk", value: data.prediction_metrics?.high_risk ?? 0, icon: AlertTriangle, color: "from-red-500 to-red-700" },
     ];
 
     const pieData = [
@@ -212,6 +213,12 @@ export default function DashboardPage() {
       { name: "Available", value: data.available ?? 0 },
       { name: "Repair", value: data.under_repair ?? 0 },
       { name: "Retired", value: data.retired ?? 0 },
+    ];
+
+    const predictionData = [
+      { name: "High Risk", count: data.prediction_metrics?.high_risk ?? 0 },
+      { name: "Medium Risk", count: data.prediction_metrics?.medium_risk ?? 0 },
+      { name: "Low Risk", count: data.prediction_metrics?.low_risk ?? 0 },
     ];
 
     return (
@@ -223,6 +230,7 @@ export default function DashboardPage() {
 
         {/* Main Content */}
         <div className="flex-1 p-8 overflow-auto">
+          <TopBar />
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-white">Admin Dashboard 📊</h1>
@@ -270,7 +278,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Stat Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-4 gap-4 mb-8">
             {statCards.map((s) => (
               <div
                 key={s.label}
@@ -358,6 +366,36 @@ export default function DashboardPage() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
+            {/* Prediction Model Bar Chart */}
+            <div
+              className="rounded-2xl p-6"
+              style={{
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                backdropFilter: "blur(20px)",
+              }}
+            >
+              <p className="text-gray-400 text-xs font-semibold uppercase mb-4 tracking-wider">
+                Asset Health Prediction
+              </p>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={predictionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <XAxis dataKey="name" tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                  <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{
+                      background: "#1e293b", border: "none",
+                      color: "#e2e8f0", borderRadius: "0.5rem", fontSize: "0.8rem",
+                    }}
+                  />
+                  <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                    {predictionData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={index === 0 ? "#ef4444" : index === 1 ? "#f59e0b" : "#10b981"} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
 
           {/* Recent Issues */}
@@ -404,8 +442,8 @@ export default function DashboardPage() {
                     </div>
                     <span
                       className={`text-xs px-2.5 py-1 rounded-full font-semibold shrink-0 ${issue.issue_status === "open"
-                          ? "bg-red-500/20 text-red-400"
-                          : "bg-green-500/20 text-green-400"
+                        ? "bg-red-500/20 text-red-400"
+                        : "bg-green-500/20 text-green-400"
                         }`}
                     >
                       {issue.issue_status}
@@ -431,6 +469,7 @@ export default function DashboardPage() {
       <Sidebar />
 
       <div className="flex-1 p-8 overflow-auto">
+        <TopBar />
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white">My Dashboard 🏠</h1>
@@ -592,8 +631,8 @@ export default function DashboardPage() {
                     </div>
                     <span
                       className={`text-xs px-2.5 py-1 rounded-full font-semibold shrink-0 ${issue.issue_status === "open"
-                          ? "bg-red-500/20 text-red-400"
-                          : "bg-green-500/20 text-green-400"
+                        ? "bg-red-500/20 text-red-400"
+                        : "bg-green-500/20 text-green-400"
                         }`}
                     >
                       {issue.issue_status}

@@ -3,10 +3,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { getRole, logout } from "@/lib/auth";
-import {
-  Monitor, LogOut, LayoutDashboard, Package, Users, GitBranch,
-  FileText, Menu, X, AlertTriangle, Download, Package2, TrendingUp
-} from "lucide-react";
+import { Monitor, LogOut, LayoutDashboard, Package, Users, GitBranch, FileText, Menu, X, AlertTriangle, Download, Package2, TrendingUp } from "lucide-react";
+import TopBar from "@/components/TopBar";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line
@@ -15,22 +13,24 @@ import {
 const COLORS = ["#6366f1", "#22d3ee", "#10b981", "#f59e0b", "#f43f5e", "#a78bfa"];
 
 const adminLinks = [
-  { icon: LayoutDashboard, label: "Dashboard",   href: "/dashboard" },
-  { icon: Package,         label: "Inventory",   href: "/inventory" },
-  { icon: Users,           label: "All Users",   href: "/users" },
-  { icon: GitBranch,       label: "Assignments", href: "/assignments" },
-  { icon: AlertTriangle,   label: "Issues",      href: "/issues" },
-  { icon: FileText,        label: "Reports",     href: "/reports", active: true },
+  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
+  { icon: Package, label: "Inventory", href: "/inventory" },
+  { icon: Users, label: "All Users", href: "/users" },
+  { icon: GitBranch, label: "Assignments", href: "/assignments" },
+  { icon: AlertTriangle, label: "Issues", href: "/issues" },
+  { icon: FileText, label: "Audit Logs", href: "/audit" },
+  { icon: FileText, label: "Exit Checklist", href: "/exit-checklist" },
+  { icon: FileText, label: "Reports", href: "/reports", active: true },
 ];
 
 export default function ReportsPage() {
   const router = useRouter();
-  const [role, setRole]               = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [data, setData]               = useState<any>(null);
-  const [loading, setLoading]         = useState(true);
-  const [exporting, setExporting]     = useState(false);
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const r = getRole();
@@ -75,7 +75,7 @@ export default function ReportsPage() {
               <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-xl">
                 <Monitor className="w-4 h-4 text-white" />
               </div>
-              <span className="font-bold text-white text-sm">OptiAsset</span>
+              <span className="font-bold text-white text-sm">Assentra</span>
             </div>
           )}
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-gray-400 hover:text-white">
@@ -95,11 +95,10 @@ export default function ReportsPage() {
         <nav className="flex-1 p-3 space-y-1">
           {adminLinks.map((link) => (
             <button key={link.label} onClick={() => router.push(link.href)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm ${
-                link.active
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm ${link.active
                   ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border border-blue-500/20"
                   : "text-gray-400 hover:text-white hover:bg-white/10"
-              }`}>
+                }`}>
               <link.icon className="w-4 h-4 shrink-0" />
               {sidebarOpen && <span>{link.label}</span>}
             </button>
@@ -116,9 +115,10 @@ export default function ReportsPage() {
 
       {/* MAIN */}
       <div className="flex-1 p-8 overflow-auto">
+        <TopBar />
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">Reports 📈</h1>
+            <h1 className="text-3xl font-bold text-white">Reports </h1>
             <p className="text-gray-400 text-sm mt-1">Asset analytics and summaries</p>
           </div>
           <button onClick={handleExportCSV} disabled={exporting}
@@ -138,11 +138,11 @@ export default function ReportsPage() {
             {/* Summary Cards */}
             <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
               {[
-                { label: "Total Assets",  value: data.total_assets, icon: Package2,    color: "from-indigo-400 to-purple-500" },
-                { label: "Total Issues",  value: data.total_issues,  icon: AlertTriangle, color: "from-rose-400 to-red-500" },
-                { label: "Categories",   value: data.category_counts?.length || 0, icon: FileText, color: "from-cyan-400 to-blue-500" },
+                { label: "Total Assets", value: data.total_assets, icon: Package2, color: "from-indigo-400 to-purple-500" },
+                { label: "Total Issues", value: data.total_issues, icon: AlertTriangle, color: "from-rose-400 to-red-500" },
+                { label: "Categories", value: data.category_counts?.length || 0, icon: FileText, color: "from-cyan-400 to-blue-500" },
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                { label: "Assignments",  value: data.monthly_assignments?.reduce((s: number, m: any) => s + m.count, 0) || 0, icon: TrendingUp, color: "from-emerald-400 to-green-500" },
+                { label: "Assignments", value: data.monthly_assignments?.reduce((s: number, m: any) => s + m.count, 0) || 0, icon: TrendingUp, color: "from-emerald-400 to-green-500" },
               ].map(s => (
                 <div key={s.label} className="rounded-2xl p-5 flex items-center gap-4 transition-all hover:scale-[1.02]"
                   style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(20px)" }}>
@@ -249,11 +249,10 @@ export default function ReportsPage() {
                         <td className="px-6 py-3 text-white font-medium">{a.asset_name}</td>
                         <td className="px-6 py-3 text-gray-400">{a.asset_category}</td>
                         <td className="px-6 py-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            a.asset_status === "available" ? "bg-green-500/20 text-green-400" :
-                            a.asset_status === "assigned"  ? "bg-indigo-500/20 text-indigo-400" :
-                            "bg-amber-500/20 text-amber-400"
-                          }`}>{a.asset_status}</span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${a.asset_status === "available" ? "bg-green-500/20 text-green-400" :
+                              a.asset_status === "assigned" ? "bg-indigo-500/20 text-indigo-400" :
+                                "bg-amber-500/20 text-amber-400"
+                            }`}>{a.asset_status}</span>
                         </td>
                         <td className="px-6 py-3 text-gray-400 text-xs">{a.purchase_date || "—"}</td>
                       </tr>

@@ -5,6 +5,8 @@ import api from "@/lib/api";
 import { getRole, logout } from "@/lib/auth";
 import { Monitor, LogOut, LayoutDashboard, Package, Users, GitBranch, FileText, Menu, X, Plus, Search, Pencil, Trash2, AlertTriangle, ChevronLeft, ChevronRight, QrCode, Download } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import TopBar from "@/components/TopBar";
+import CustomSelect from "@/components/ui/CustomSelect";
 
 interface Asset {
   id: number;
@@ -81,8 +83,9 @@ export default function InventoryPage() {
       setShowAdd(false);
       setAddForm({ asset_code: "", asset_name: "", asset_category: "Laptop", asset_status: "available", purchase_date: "" });
       fetchAssets();
-    } catch (err: any) {
-      setAddError(err?.response?.data?.detail || "Failed to add asset");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } };
+      setAddError(error?.response?.data?.detail || "Failed to add asset");
     } finally {
       setAddLoading(false);
     }
@@ -149,6 +152,7 @@ export default function InventoryPage() {
     { icon: GitBranch,       label: "Assignments",    href: "/assignments" },
     { icon: AlertTriangle,   label: "Issues",         href: "/issues" },
     { icon: FileText,        label: "Audit Logs",     href: "/audit" },
+    { icon: FileText,        label: "Exit Checklist", href: "/exit-checklist" },
     { icon: FileText,        label: "Reports",        href: "/reports" },
   ];
 
@@ -166,7 +170,7 @@ export default function InventoryPage() {
               <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-xl">
                 <Monitor className="w-4 h-4 text-white" />
               </div>
-              <span className="font-bold text-white text-sm">OptiAsset</span>
+              <span className="font-bold text-white text-sm">Assentra</span>
             </div>
           )}
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-gray-400 hover:text-white">
@@ -202,6 +206,7 @@ export default function InventoryPage() {
 
       {/* MAIN */}
       <div className="flex-1 p-8 overflow-auto">
+        <TopBar />
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white">Inventory 📦</h1>
@@ -329,24 +334,30 @@ export default function InventoryPage() {
               </div>
               <div>
                 <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">Category</label>
-                <select value={addForm.asset_category} onChange={(e) => setAddForm({...addForm, asset_category: e.target.value})}
-                  className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-blue-500">
-                  <option value="Laptop">Laptop</option>
-                  <option value="Mobile">Mobile</option>
-                  <option value="Monitor">Monitor</option>
-                  <option value="Tablet">Tablet</option>
-                  <option value="Other">Other</option>
-                </select>
+                <CustomSelect
+                  value={addForm.asset_category}
+                  onChange={(val) => setAddForm({...addForm, asset_category: val})}
+                  options={[
+                    { value: "Laptop", label: "Laptop" },
+                    { value: "Mobile", label: "Mobile" },
+                    { value: "Monitor", label: "Monitor" },
+                    { value: "Tablet", label: "Tablet" },
+                    { value: "Other", label: "Other" }
+                  ]}
+                />
               </div>
               <div>
                 <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">Status</label>
-                <select value={addForm.asset_status} onChange={(e) => setAddForm({...addForm, asset_status: e.target.value})}
-                  className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-blue-500">
-                  <option value="available">Available</option>
-                  <option value="assigned">Assigned</option>
-                  <option value="under_repair">Under Repair</option>
-                  <option value="retired">Retired</option>
-                </select>
+                <CustomSelect
+                  value={addForm.asset_status}
+                  onChange={(val) => setAddForm({...addForm, asset_status: val})}
+                  options={[
+                    { value: "available", label: "Available" },
+                    { value: "assigned", label: "Assigned" },
+                    { value: "under_repair", label: "Under Repair" },
+                    { value: "retired", label: "Retired" }
+                  ]}
+                />
               </div>
               <div>
                 <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">Purchase Date</label>
@@ -378,24 +389,30 @@ export default function InventoryPage() {
               </div>
               <div>
                 <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">Category</label>
-                <select value={editForm.asset_category} onChange={(e) => setEditForm({...editForm, asset_category: e.target.value})}
-                  className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-blue-500">
-                  <option value="Laptop">Laptop</option>
-                  <option value="Mobile">Mobile</option>
-                  <option value="Monitor">Monitor</option>
-                  <option value="Tablet">Tablet</option>
-                  <option value="Other">Other</option>
-                </select>
+                <CustomSelect
+                  value={editForm.asset_category}
+                  onChange={(val) => setEditForm({...editForm, asset_category: val})}
+                  options={[
+                    { value: "Laptop", label: "Laptop" },
+                    { value: "Mobile", label: "Mobile" },
+                    { value: "Monitor", label: "Monitor" },
+                    { value: "Tablet", label: "Tablet" },
+                    { value: "Other", label: "Other" }
+                  ]}
+                />
               </div>
               <div>
                 <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">Status</label>
-                <select value={editForm.asset_status} onChange={(e) => setEditForm({...editForm, asset_status: e.target.value})}
-                  className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-blue-500">
-                  <option value="available">Available</option>
-                  <option value="assigned">Assigned</option>
-                  <option value="under_repair">Under Repair</option>
-                  <option value="retired">Retired</option>
-                </select>
+                <CustomSelect
+                  value={editForm.asset_status}
+                  onChange={(val) => setEditForm({...editForm, asset_status: val})}
+                  options={[
+                    { value: "available", label: "Available" },
+                    { value: "assigned", label: "Assigned" },
+                    { value: "under_repair", label: "Under Repair" },
+                    { value: "retired", label: "Retired" }
+                  ]}
+                />
               </div>
               <div>
                 <label className="text-gray-400 text-xs font-semibold uppercase mb-2 block">Purchase Date</label>
